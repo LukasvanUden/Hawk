@@ -3,6 +3,7 @@
 A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (including deleted ones) via a linked device connection and stores them in your own Firebase Firestore database.
 
 ### Check <a href="https://amit.is-a.dev/logger">guide</a> for detailed installation process.
+<a href="https://www.producthunt.com/products/whatsapp-logger-self-hosted?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-whatsapp-logger-self-hosted" target="_blank" rel="noopener noreferrer"><img alt="WhatsApp Logger (Self-Hosted) - Privacy-focused WhatsApp archiving with Anti-Delete. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1122776&amp;theme=light&amp;t=1776172043162"></a>
 
 ### Important notes:
  * It is recommended to download the **web app** after the publication of webpage for better security. 
