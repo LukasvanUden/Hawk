@@ -1,7 +1,7 @@
 {
   "name": "WhatsApp Logger",
   "short_name": "WA Logger",
-  "start_url": "./index.html",
+  "start_url": "<-- full site link -->", 
   "display": "standalone",
   "background_color": "#FBFDF9",
   "theme_color": "#006C4C",
