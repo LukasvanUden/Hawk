@@ -1,15 +1,15 @@
 const {
     default: makeWASocket,
-    useMultiFileAuthState,
     DisconnectReason,
-    fetchLatestBaileysVersion
+    fetchLatestBaileysVersion,
+    BufferJSON,
+    initAuthCreds,
+    proto
 } = require('@whiskeysockets/baileys');
 const express = require('express');
 const QRCode = require('qrcode');
 const pino = require('pino');
 const admin = require('firebase-admin');
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 
 // --- CONFIGURATION ---
@@ -19,8 +19,8 @@ const AUTH_PASS = process.env.AUTH_PASS;
 
 // Initialize Express
 const app = express();
-app.use(express.urlencoded({ extended: true })); // Parse form data
-app.use(express.json()); // Parse JSON bodies (for API requests)
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json()); 
 
 // --- FIREBASE SETUP ---
 let serviceAccount;
@@ -42,6 +42,85 @@ try {
 
 const db = admin.firestore();
 
+// --- FIRESTORE AUTH ADAPTER FOR BAILEYS ---
+async function useFirestoreAuthState(db, collectionName = 'whatsapp_auth') {
+    const collection = db.collection(collectionName);
+
+    const writeData = async (data, id) => {
+        try {
+            // BufferJSON converts buffers & uint8 arrays into storable base64 strings
+            const str = JSON.stringify(data, BufferJSON.replacer);
+            await collection.doc(id).set({ data: str });
+        } catch (err) {
+            console.error("System: Error writing auth state:", err.message);
+        }
+    };
+
+    const readData = async (id) => {
+        try {
+            const doc = await collection.doc(id).get();
+            if (doc.exists) {
+                return JSON.parse(doc.data().data, BufferJSON.reviver);
+            }
+        } catch (err) {
+            console.error("System: Error reading auth state:", err.message);
+        }
+        return null;
+    };
+
+    const removeData = async (id) => {
+        try {
+            await collection.doc(id).delete();
+        } catch (err) {
+            console.error("System: Error removing auth state:", err.message);
+        }
+    };
+
+    // Load credentials from Firestore or generate new ones (for initial QR scan)
+    const creds = (await readData('creds')) || initAuthCreds();
+
+    return {
+        state: {
+            creds,
+            keys: {
+                get: async (type, ids) => {
+                    const data = {};
+                    await Promise.all(ids.map(async id => {
+                        let value = await readData(`${type}-${id}`);
+                        if (type === 'app-state-sync-key' && value) {
+                            value = proto.Message.AppStateSyncKeyData.fromObject(value);
+                        }
+                        data[id] = value;
+                    }));
+                    return data;
+                },
+                set: async (data) => {
+                    const tasks = [];
+                    for (const category in data) {
+                        for (const id in data[category]) {
+                            const value = data[category][id];
+                            const docId = `${category}-${id}`;
+                            if (value) {
+                                tasks.push(writeData(value, docId));
+                            } else {
+                                tasks.push(removeData(docId));
+                            }
+                        }
+                    }
+                    await Promise.all(tasks);
+                }
+            }
+        },
+        saveCreds: () => {
+            return writeData(creds, 'creds');
+        },
+        clearState: async () => {
+            // We only need to delete the primary creds to force a new QR scan
+            await removeData('creds');
+        }
+    };
+}
+
 // --- BAILEYS SETUP ---
 let qrCodeData = null; 
 let sock = null;
@@ -50,40 +129,86 @@ let isConnected = false;
 async function startWhatsApp() {
     const logger = pino({ level: 'silent' });
     
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    // Use our custom Firestore Auth adapter instead of useMultiFileAuthState
+    const { state, saveCreds, clearState } = await useFirestoreAuthState(db, 'whatsapp_auth');
     const { version } = await fetchLatestBaileysVersion();
+
+    console.log("System: Connecting to WhatsApp servers...");
 
     sock = makeWASocket({
         version,
         logger,
-        printQRInTerminal: false,
+        printQRInTerminal: true,
         auth: state,
-        browser: ["WhatsApp Logger by notamitgamer", "Chrome", "1.0.0"],
-        syncFullHistory: false 
+        browser: ["WhatsApp Logger Backend", "Chrome", "1.0.0"],
+        syncFullHistory: true 
     });
 
-    sock.ev.on('connection.update', (update) => {
+    sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
+            console.log("System: No valid credentials. New QR Code generated.");
             qrCodeData = qr;
             isConnected = false;
         }
 
         if (connection === 'close') {
             isConnected = false;
-            const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+
+            console.log(`System: Connection closed (Status: ${statusCode})`);
+
             if (shouldReconnect) {
-                startWhatsApp();
+                console.log("System: Reconnecting in 5 seconds...");
+                setTimeout(startWhatsApp, 5000);
+            } else {
+                console.log("System: Device Logged Out. Wiping session from Firestore.");
+                await clearState();
+                qrCodeData = null;
+                startWhatsApp(); // Restart to grab a fresh QR code
             }
         } else if (connection === 'open') {
-            console.log("System: Connection Open and Authenticated");
+            console.log("System: Connection Open and Authenticated. Firebase Auth Sync Active.");
             qrCodeData = null;
             isConnected = true;
         }
     });
 
+    // Write updated credentials back to Firestore whenever keys change
     sock.ev.on('creds.update', saveCreds);
+
+    // --- FEATURE: REAL NUMBER SYNC ---
+    sock.ev.on('contacts.upsert', async (contacts) => {
+        for (const contact of contacts) {
+            let updateData = {};
+            const displayName = contact.name || contact.notify;
+            
+            if (displayName) updateData.displayName = displayName;
+
+            // Extract standard phone number from standard JID
+            if (contact.id && contact.id.endsWith('@s.whatsapp.net')) {
+                updateData.phoneNumber = contact.id.split('@')[0];
+            }
+
+            // Sync using LID or ID
+            const primaryId = contact.lid || contact.id;
+
+            if (primaryId && Object.keys(updateData).length > 0) {
+                try {
+                    await db.collection('Chats').doc(primaryId).set(updateData, { merge: true });
+                    
+                    // Keep the fallback JID document synced as well if we routed via LID
+                    if (contact.lid && contact.id !== contact.lid) {
+                        await db.collection('Chats').doc(contact.id).set(updateData, { merge: true });
+                    }
+                } catch (err) {
+                    // Silent fail to keep logs clean
+                }
+            }
+        }
+    });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify' && type !== 'append') return;
@@ -110,18 +235,14 @@ async function startWhatsApp() {
 
                 const isFromMe = msg.key.fromMe || false;
                 const senderName = isFromMe ? "Me" : (msg.pushName || "Unknown");
-                const phoneNumber = remoteJid.split('@')[0]; // Extract number from JID
 
-                // --- FIX: Create/Update Parent Chat Document ---
-                // This makes the chat visible in the list automatically
+                // 1. Ensure Chat Document Exists
                 await db.collection('Chats').doc(remoteJid).set({
                     lastActive: timestamp,
-                    displayName: senderName,
-                    phoneNumber: phoneNumber, // Added: Save phone number/ID to Chat
                     id: remoteJid
                 }, { merge: true });
 
-                // --- Save Message ---
+                // 2. Save Message
                 await db.collection('Chats')
                     .doc(remoteJid)
                     .collection('Messages')
@@ -130,7 +251,6 @@ async function startWhatsApp() {
                         text: textContent,
                         senderId: remoteJid,
                         senderName: senderName,
-                        senderPhoneNumber: phoneNumber, // Added: Save phone number/ID to Message
                         timestamp: timestamp,
                         fromMe: isFromMe,
                         id: msg.key.id
@@ -160,14 +280,13 @@ function parseCookies(request) {
 
 // --- EXPRESS ROUTES ---
 
-// 1. PUBLIC ROUTE: Ping
+// 1. Ping (UptimeRobot)
 app.get('/ping', (req, res) => {
     res.status(200).send('Pong');
 });
 
-// 2. PUBLIC ROUTE: Verify Credentials API
+// 2. API: Verify Credentials
 app.post('/api/verify', (req, res) => {
-    // CORS Headers
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 
@@ -180,13 +299,14 @@ app.post('/api/verify', (req, res) => {
     }
 });
 
+// CORS Pre-flight
 app.options('/api/verify', (req, res) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     res.sendStatus(200);
 });
 
-// 3. LOGIN PAGE (GET)
+// 3. Login Page
 app.get('/login', (req, res) => {
     res.send(`
         <html>
@@ -214,49 +334,39 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// 4. LOGIN ACTION (POST)
+// 4. Login Action
 app.post('/login', (req, res) => {
     const { username, password, remember } = req.body;
 
     if (username === AUTH_USER && password === AUTH_PASS) {
         let cookieSettings = 'HttpOnly; Path=/;'; 
+        if (remember === 'yes') cookieSettings += ' Max-Age=300;';
         
-        if (remember === 'yes') {
-            cookieSettings += ' Max-Age=300;';
-        }
-
         res.setHeader('Set-Cookie', `auth_session=${SESSION_SECRET}; ${cookieSettings}`);
         return res.redirect('/');
     }
-    
     res.status(401).send('Invalid credentials. <a href="/login">Try again</a>');
 });
 
-// 5. LOGOUT ACTION
+// 5. Logout
 app.get('/logout', (req, res) => {
     res.setHeader('Set-Cookie', 'auth_session=; Max-Age=0; Path=/;');
     res.redirect('/login');
 });
 
-// --- MIDDLEWARE: FORM AUTH ---
+// --- MIDDLEWARE ---
 const checkAuth = (req, res, next) => {
     if (!AUTH_USER || !AUTH_PASS) return next();
-
     const cookies = parseCookies(req);
-    if (cookies.auth_session === SESSION_SECRET) {
-        return next();
-    }
-
-    if (req.path.startsWith('/api')) {
-        res.status(401).send('Unauthorized');
-    } else {
-        res.redirect('/login');
-    }
+    if (cookies.auth_session === SESSION_SECRET) return next();
+    
+    if (req.path.startsWith('/api')) res.status(401).send('Unauthorized');
+    else res.redirect('/login');
 };
 
 app.use(checkAuth);
 
-// 6. PROTECTED ROUTE: Main Page (QR Code)
+// 6. Main Route
 app.get('/', async (req, res) => {
     const logoutBtn = `<a href="/logout" style="position: absolute; top: 10px; right: 10px; padding: 8px 16px; background: #ff4444; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">Logout</a>`;
 
@@ -267,7 +377,7 @@ app.get('/', async (req, res) => {
                     ${logoutBtn}
                     <div style="background: white; padding: 40px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                         <h2 style="color: green;">System Operational</h2>
-                        <p style="color: #555;">Connected to WhatsApp.</p>
+                        <p style="color: #555;">Connected to WhatsApp. State synced to Firestore.</p>
                         <p style="color: #999; font-size: 12px;">Back-end Service</p>
                     </div>
                 </body>
@@ -300,7 +410,7 @@ app.get('/', async (req, res) => {
         <html>
             <head><meta http-equiv="refresh" content="2"></head>
             <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-                <p>Initializing... please refresh.</p>
+                <p>Initializing connection or restoring auth state... please wait.</p>
                 ${logoutBtn}
             </body>
         </html>
@@ -311,10 +421,4 @@ app.get('/', async (req, res) => {
 app.listen(PORT, () => {
     startWhatsApp();
     console.log(`Server running on port ${PORT}`);
-    
-    if (AUTH_USER && AUTH_PASS) {
-        console.log("Security: Form Authentication is ENABLED.");
-    } else {
-        console.log("Security: Form Authentication is DISABLED (Env vars missing).");
-    }
 });
