@@ -6,16 +6,16 @@
     <title>WhatsApp Logger</title>
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest-wpChat.json">
+    <link rel="manifest" href="/assets/manifest-wpChat.json">
     <meta name="theme-color" content="#006C4C">
     
     <!-- SVG Favicon -->
-    <link rel="icon" href="icon.svg">
+    <link rel="icon" href="/assets/icon.svg">
 
     <!-- Fonts & Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
 
     <!-- Firebase SDKs -->
@@ -39,6 +39,7 @@
             --md-sys-color-surface-dim: #D9DBD9;
             --md-sys-color-surface-container: #ECEEEB;
             --md-sys-color-surface-container-high: #E6E8E5;
+            --md-sys-color-surface-container-highest: #E1E3E0;
             
             --md-sys-color-on-surface: #191C1A;
             --md-sys-color-on-surface-variant: #404944;
@@ -49,10 +50,10 @@
             --md-sys-color-error-container: #FFDAD6;
             --md-sys-color-on-error-container: #410002;
             
-            /* WhatsApp Specifics */
-            --chat-bubble-me: #E2FFEC;
+            /* WhatsApp Authentic Colors */
+            --chat-bubble-me: #DCF8C6;
             --chat-bubble-them: #FFFFFF;
-            --chat-bg-color: #EFE7DE;
+            --chat-bg-color: #ECE5DD;
             --chat-bg-image-opacity: 0.08;
             --search-highlight: #ffeb3b;
             
@@ -80,6 +81,7 @@
             --md-sys-color-surface-dim: #111412;
             --md-sys-color-surface-container: #1E211F;
             --md-sys-color-surface-container-high: #282B29;
+            --md-sys-color-surface-container-highest: #333534;
             
             --md-sys-color-on-surface: #E2E3DD;
             --md-sys-color-on-surface-variant: #C2C8C5;
@@ -99,8 +101,10 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+        body, *:not(.material-symbols-rounded) {
+            font-family: 'Lexend', sans-serif !important;
+        }
         body {
-            font-family: 'Roboto', sans-serif;
             background-color: var(--md-sys-color-surface);
             color: var(--md-sys-color-on-surface);
             height: 100vh;
@@ -135,10 +139,9 @@
         .delay-4 { animation-delay: 0.4s; }
         .delay-5 { animation-delay: 0.5s; }
 
-        /* --- AUTH SCREEN (UPDATED to M3 Classic) --- */
+        /* --- AUTH SCREEN --- */
         #auth-screen {
             position: fixed; inset: 0; z-index: 999;
-            /* Static blue-green background */
             background: radial-gradient(circle at 0% 0%, #C1E8FB 0%, transparent 50%), 
                         radial-gradient(circle at 100% 100%, #89F8C7 0%, transparent 50%), 
                         #FBFDF9;
@@ -147,16 +150,14 @@
             transition: opacity 0.3s;
         }
         
-        /* Dark Mode Override for Auth Background */
         [data-theme="dark"] #auth-screen {
              background: radial-gradient(circle at 0% 0%, #001F29 0%, transparent 50%), 
                         radial-gradient(circle at 100% 100%, #002114 0%, transparent 50%), 
                         #111412;
         }
         
-        /* Updated M3 Auth Card (Classic Style) */
         .auth-card { 
-            background: rgba(251, 253, 249, 0.7); /* Translucent */
+            background: rgba(251, 253, 249, 0.7);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-radius: 28px;
             padding: 32px 24px; 
@@ -177,19 +178,8 @@
         .brand-icon img { width: 100%; height: 100%; object-fit: contain; }
 
         .auth-header { text-align: center; }
-        .auth-header h1 { 
-            font-family: 'Google Sans', sans-serif; 
-            font-size: 28px; 
-            font-weight: 400;
-            color: var(--md-sys-color-on-surface);
-            margin: 8px 0;
-        }
-        .auth-header p {
-            font-family: 'Roboto', sans-serif;
-            font-size: 14px; 
-            color: var(--md-sys-color-on-surface-variant);
-            margin: 0;
-        }
+        .auth-header h1 { font-family: 'Google Sans', sans-serif; font-size: 28px; font-weight: 400; color: var(--md-sys-color-on-surface); margin: 8px 0; }
+        .auth-header p { font-family: 'Roboto', sans-serif; font-size: 14px; color: var(--md-sys-color-on-surface-variant); margin: 0; }
 
         /* --- LOCK SCREEN (PIN/BIO) --- */
         #lock-screen {
@@ -226,199 +216,101 @@
         .key-btn:active { background: var(--md-sys-color-surface-container-high); }
         .key-backspace { font-size: 24px; color: var(--md-sys-color-on-surface-variant); }
 
-        .forgot-pin-btn {
-            margin-top: 16px; color: var(--md-sys-color-primary); background: none; border: none;
-            font-weight: 500; font-size: 14px; padding: 8px 16px; border-radius: 20px; cursor: pointer;
-        }
+        .forgot-pin-btn { margin-top: 16px; color: var(--md-sys-color-primary); background: none; border: none; font-weight: 500; font-size: 14px; padding: 8px 16px; border-radius: 20px; cursor: pointer; }
 
         /* --- LOCKOUT UI --- */
-        .lockout-container {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; width: 100%; animation: fadeIn 0.3s; flex: 1;
-        }
-        .lockout-icon-bg {
-            width: 80px; height: 80px; border-radius: 50%;
-            background: var(--md-sys-color-error-container);
-            color: var(--md-sys-color-on-error-container);
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 24px;
-        }
+        .lockout-container { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%; animation: fadeIn 0.3s; flex: 1; }
+        .lockout-icon-bg { width: 80px; height: 80px; border-radius: 50%; background: var(--md-sys-color-error-container); color: var(--md-sys-color-on-error-container); display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
         .lockout-icon { font-size: 40px; }
         .lockout-title { font-family: 'Google Sans'; font-size: 28px; margin-bottom: 8px; color: var(--md-sys-color-on-surface); }
         .lockout-msg { color: var(--md-sys-color-on-surface-variant); margin-bottom: 32px; font-size: 16px; }
-        .lockout-timer { 
-            font-family: 'Google Sans'; font-size: 56px; font-weight: 400; 
-            color: var(--md-sys-color-error); font-feature-settings: "tnum"; 
-            margin-bottom: 8px;
-        }
+        .lockout-timer { font-family: 'Google Sans'; font-size: 56px; font-weight: 400; color: var(--md-sys-color-error); font-feature-settings: "tnum"; margin-bottom: 8px; }
         .lockout-sub { margin-top: 16px; color: var(--md-sys-color-on-surface-variant); font-size: 14px; }
-        
-        /* Utility to hide PIN/BIO when locked */
-        .locked-mode #pinUI, 
-        .locked-mode #bioUI, 
-        .locked-mode .forgot-pin-btn { 
-            display: none !important; 
-        }
+        .lockout-actions { margin-top: 24px; display: flex; gap: 12px; }
+        .locked-mode #pinUI, .locked-mode #bioUI, .locked-mode .forgot-pin-btn { display: none !important; }
 
         /* --- UI ELEMENTS --- */
         .m3-field {
             position: relative; margin-bottom: 0;
             background: var(--md-sys-color-surface-container-highest);
-            border-radius: 4px 4px 0 0;
-            border-bottom: 1px solid var(--md-sys-color-outline);
-            transition: background 0.3s;
-            height: 56px;
+            border-radius: 4px 4px 0 0; border-bottom: 1px solid var(--md-sys-color-outline);
+            transition: background 0.3s; height: 56px;
         }
-        .m3-field:hover {
-            background: rgba(29, 25, 43, 0.08);
-        }
-        .m3-field:focus-within { 
-            border-bottom: 2px solid var(--md-sys-color-primary); 
-        }
-        .m3-input {
-            width: 100%; height: 100%; padding: 24px 16px 8px 16px;
-            border: none; background: transparent; outline: none;
-            font-size: 16px; color: var(--md-sys-color-on-surface); font-family: inherit;
-        }
-        .m3-label {
-            position: absolute; left: 16px; top: 18px;
-            color: var(--md-sys-color-on-surface-variant);
-            font-size: 16px; pointer-events: none; transition: 0.2s cubic-bezier(0.2, 0, 0, 1);
-        }
-        .m3-input:focus ~ .m3-label, .m3-input:not(:placeholder-shown) ~ .m3-label {
-            top: 8px; font-size: 12px; color: var(--md-sys-color-primary);
-        }
-        .eye-toggle {
-            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-            border: none; background: none; cursor: pointer; color: var(--md-sys-color-on-surface-variant);
-            padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;
-        }
+        .m3-field:hover { background: rgba(29, 25, 43, 0.08); }
+        .m3-field:focus-within { border-bottom: 2px solid var(--md-sys-color-primary); }
+        .m3-input { width: 100%; height: 100%; padding: 24px 16px 8px 16px; border: none; background: transparent; outline: none; font-size: 16px; color: var(--md-sys-color-on-surface); font-family: inherit; }
+        .m3-label { position: absolute; left: 16px; top: 18px; color: var(--md-sys-color-on-surface-variant); font-size: 16px; pointer-events: none; transition: 0.2s cubic-bezier(0.2, 0, 0, 1); }
+        .m3-input:focus ~ .m3-label, .m3-input:not(:placeholder-shown) ~ .m3-label { top: 8px; font-size: 12px; color: var(--md-sys-color-primary); }
+        .eye-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: none; cursor: pointer; color: var(--md-sys-color-on-surface-variant); padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
         .eye-toggle:hover { background: rgba(0,0,0,0.05); color: var(--md-sys-color-on-surface); }
 
         .m3-btn {
-            width: 100%; height: 48px; border-radius: 24px;
-            border: none; outline: none; cursor: pointer;
+            width: 100%; height: 48px; border-radius: 24px; border: none; outline: none; cursor: pointer;
             font-family: 'Google Sans', sans-serif; font-weight: 500; font-size: 14px;
             display: flex; align-items: center; justify-content: center; gap: 8px;
             transition: 0.2s; position: relative; overflow: hidden;
         }
-        .m3-btn.filled {
-            background: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            box-shadow: none; 
-        }
-        .m3-btn.filled:hover { 
-            box-shadow: var(--elevation-1); 
-        }
+        .m3-btn.filled { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); box-shadow: none; }
+        .m3-btn.filled:hover { box-shadow: var(--elevation-1); }
         .m3-btn:disabled { opacity: 0.38; cursor: not-allowed; background: var(--md-sys-color-on-surface); color: var(--md-sys-color-surface); box-shadow: none; }
 
-        /* Spinner */
-        .spinner {
-            width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 50%; border-top-color: white;
-            animation: spin 0.8s linear infinite; display: none;
-        }
+        .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.8s linear infinite; display: none; }
         .m3-btn.loading .btn-text { visibility: hidden; }
         .m3-btn.loading .btn-icon { display: none; }
         .m3-btn.loading .spinner { display: block; position: absolute; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* --- APP LAYOUT --- */
-        #app-layout {
-            display: flex; width: 100%; height: 100%; max-width: 1600px;
-            background: var(--md-sys-color-surface); opacity: 0; transition: opacity 0.6s ease-in-out;
-            visibility: hidden; 
-        }
+        #app-layout { display: flex; width: 100%; height: 100%; max-width: 1600px; background: var(--md-sys-color-surface); opacity: 0; transition: opacity 0.6s ease-in-out; visibility: hidden; }
         #app-layout.visible { opacity: 1; visibility: visible; }
 
         /* SIDEBAR */
-        .sidebar {
-            width: 400px; display: flex; flex-direction: column;
-            border-right: 1px solid var(--md-sys-color-outline-variant);
-            background: var(--md-sys-color-surface); z-index: 10;
-        }
+        .sidebar { width: 400px; display: flex; flex-direction: column; border-right: 1px solid var(--md-sys-color-outline-variant); background: var(--md-sys-color-surface); z-index: 10; }
         .sidebar-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .icon-btn {
-            width: 40px; height: 40px; border-radius: 50%; border: none; background: transparent; cursor: pointer;
-            color: var(--md-sys-color-on-surface-variant); display: flex; align-items: center; justify-content: center; transition: 0.2s;
-        }
+        .icon-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: transparent; cursor: pointer; color: var(--md-sys-color-on-surface-variant); display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .icon-btn:hover { background: rgba(128,128,128,0.1); color: var(--md-sys-color-on-surface); }
-        
         .search-container { padding: 0 16px 12px; }
-        .search-bar {
-            background: var(--md-sys-color-surface-container-high);
-            border-radius: 28px; height: 48px; display: flex; align-items: center; padding: 0 16px;
-        }
-        .search-bar input {
-            border: none; background: transparent; outline: none; flex: 1; margin-left: 12px;
-            font-size: 16px; color: var(--md-sys-color-on-surface);
-        }
+        .search-bar { background: var(--md-sys-color-surface-container-high); border-radius: 28px; height: 48px; display: flex; align-items: center; padding: 0 16px; }
+        .search-bar input { border: none; background: transparent; outline: none; flex: 1; margin-left: 12px; font-size: 16px; color: var(--md-sys-color-on-surface); }
         .contact-list { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px; }
-        .contact-item {
-            display: flex; align-items: center; padding: 12px 16px; border-radius: 16px; cursor: pointer; margin-bottom: 2px;
-            animation: slideUp 0.3s cubic-bezier(0.2, 0.0, 0, 1.0) backwards;
-        }
+        .contact-item { display: flex; align-items: center; padding: 12px 16px; border-radius: 16px; cursor: pointer; margin-bottom: 2px; animation: slideUp 0.3s cubic-bezier(0.2, 0.0, 0, 1.0) backwards; }
         .contact-item:hover { background: rgba(128,128,128,0.05); }
         .contact-item.active { background: var(--md-sys-color-secondary-container); }
         .contact-item.active .contact-name { color: var(--md-sys-color-on-secondary-container); font-weight: 700; }
-        .avatar {
-            width: 48px; height: 48px; border-radius: 50%;
-            background: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-on-primary-container);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 18px; font-weight: 500; flex-shrink: 0; margin-right: 16px;
-        }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 500; flex-shrink: 0; margin-right: 16px; }
         .contact-info { flex: 1; min-width: 0; }
         .contact-name { font-size: 16px; font-weight: 500; color: var(--md-sys-color-on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .contact-sub { font-size: 14px; color: var(--md-sys-color-on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* CHAT AREA */
-        .chat-area {
-            flex: 1; display: flex; flex-direction: column; position: relative;
-            background-color: var(--chat-bg-color);
-            transition: background-color 0.3s;
-        }
-        .chat-bg-pattern {
-            position: absolute; inset: 0; opacity: var(--chat-bg-image-opacity); z-index: 0; pointer-events: none;
-            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 1.79 4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%236e7874' fill-opacity='0.08' fill-rule='evenodd'/%3E%3C/svg%3E");
-        }
-        .chat-header {
-            height: 64px; background: var(--md-sys-color-surface);
-            display: flex; align-items: center; padding: 0 16px;
-            border-bottom: 1px solid var(--md-sys-color-outline-variant); z-index: 5;
-        }
+        .chat-area { flex: 1; display: flex; flex-direction: column; position: relative; background-color: var(--chat-bg-color); transition: background-color 0.3s; overflow: hidden; }
+        .chat-bg-pattern { position: absolute; inset: 0; opacity: var(--chat-bg-image-opacity); z-index: 0; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 1.79 4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%236e7874' fill-opacity='0.08' fill-rule='evenodd'/%3E%3C/svg%3E"); }
+        .chat-header { height: 64px; background: var(--md-sys-color-surface); display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid var(--md-sys-color-outline-variant); z-index: 5; }
+        
         .chat-content {
             flex: 1; overflow-y: auto; padding: 16px; z-index: 1;
             display: flex; flex-direction: column; gap: 4px;
-            scroll-behavior: auto; /* Removed smooth scrolling for initial load */
-            scroll-behavior: smooth;
-        }
-        /* Override specifically to remove default smooth behavior that causes load animation */
-        .chat-content {
-            scroll-behavior: auto !important;
-        }
-
-        .msg-bubble {
-            max-width: 80%; padding: 8px 12px; position: relative;
-            font-size: var(--base-font-size); line-height: 1.4;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            display: flex; flex-direction: column;
-            animation: scaleIn 0.2s cubic-bezier(0.2, 0.0, 0, 1.0) backwards;
-        }
-        .msg-in {
-            align-self: flex-start; background: var(--chat-bubble-them);
-            border-radius: 0 16px 16px 16px; color: var(--md-sys-color-on-surface);
-        }
-        .msg-out {
-            align-self: flex-end; background: var(--chat-bubble-me);
-            border-radius: 16px 0 16px 16px; color: var(--md-sys-color-on-surface);
+            scroll-behavior: auto !important; 
+            transition: padding-bottom 0.4s cubic-bezier(0.2, 0, 0, 1);
         }
         
-        /* Message Grouping - WhatsApp Style */
+        /* Forces bottom-up alignment when content is sparse */
+        .chat-content::before {
+            content: '';
+            flex: 1 1 auto;
+        }
+
+        .chat-content.syncing {
+            padding-bottom: 72px; /* Cinematic push up */
+        }
+
+        .msg-bubble { max-width: 80%; padding: 8px 12px; position: relative; font-size: var(--base-font-size); line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.1); display: flex; flex-direction: column; animation: scaleIn 0.2s cubic-bezier(0.2, 0.0, 0, 1.0) backwards; }
+        .msg-in { align-self: flex-start; background: var(--chat-bubble-them); border-radius: 0 16px 16px 16px; color: var(--md-sys-color-on-surface); }
+        .msg-out { align-self: flex-end; background: var(--chat-bubble-me); border-radius: 16px 0 16px 16px; color: var(--md-sys-color-on-surface); }
+        
         .msg-out.group-top { border-bottom-right-radius: 4px; margin-bottom: 2px; }
         .msg-out.group-mid { border-top-right-radius: 4px; border-bottom-right-radius: 4px; margin-bottom: 2px; }
         .msg-out.group-bot { border-top-right-radius: 4px; margin-top: 0; }
-        
         .msg-in.group-top { border-bottom-left-radius: 4px; margin-bottom: 2px; }
         .msg-in.group-mid { border-top-left-radius: 4px; border-bottom-left-radius: 4px; margin-bottom: 2px; }
         .msg-in.group-bot { border-top-left-radius: 4px; margin-top: 0; }
@@ -427,111 +319,81 @@
         .msg-meta { font-size: 10px; opacity: 0.7; align-self: flex-end; margin-top: 2px; }
         
         /* DATE DIVIDERS */
-        .chat-date-group {
-            display: flex; flex-direction: column; gap: 4px; 
-            position: relative; /* Scope for sticky */
-        }
-        .date-divider {
-            align-self: center; margin: 16px 0;
-            background: var(--md-sys-color-surface-container-high);
-            color: var(--md-sys-color-on-surface-variant);
-            font-size: 12px; font-weight: 500;
-            padding: 6px 12px; border-radius: 12px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            position: sticky; top: 8px; z-index: 2;
-        }
+        .chat-date-group { display: flex; flex-direction: column; gap: 4px; position: relative; }
+        .date-divider { align-self: center; margin: 16px 0; background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface-variant); font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); position: sticky; top: 8px; z-index: 2; }
 
         .highlight { background-color: var(--search-highlight); color: black; border-radius: 2px; padding: 0 2px; }
 
-        /* Search In Chat */
-        .in-chat-search {
-            background: var(--md-sys-color-surface-container);
-            padding: 8px 16px; display: flex; align-items: center; gap: 10px;
-            border-bottom: 1px solid var(--md-sys-color-outline-variant);
-            animation: slideUp 0.3s cubic-bezier(0.2, 0.0, 0, 1.0);
+        /* Sync Loading Spinner (Cinematic UI) */
+        .sync-spinner-wrapper {
+            position: absolute; bottom: 16px; left: 0; right: 0;
+            display: flex; justify-content: center;
+            pointer-events: none; z-index: 10;
+            transform: translateY(150%); opacity: 0;
+            transition: all 0.4s cubic-bezier(0.2, 0, 0, 1);
         }
-        .in-chat-search input {
-            border: none; background: transparent; outline: none; flex: 1;
+        .sync-spinner-wrapper.active {
+            transform: translateY(0); opacity: 1;
+        }
+        .sync-chip {
+            background: var(--md-sys-color-surface-container-highest);
             color: var(--md-sys-color-on-surface);
+            padding: 8px 16px; border-radius: 24px;
+            display: flex; align-items: center; gap: 10px;
+            font-size: 13px; font-weight: 500;
+            box-shadow: var(--elevation-2);
+            border: 1px solid var(--md-sys-color-outline-variant);
         }
+        .sync-chip .spinner {
+            border-color: rgba(0,0,0,0.1);
+            border-top-color: var(--md-sys-color-primary);
+            width: 16px; height: 16px; 
+            display: block; position: static;
+        }
+        [data-theme="dark"] .sync-chip .spinner {
+             border-color: rgba(255,255,255,0.1);
+             border-top-color: var(--md-sys-color-primary);
+        }
+
+        /* Search In Chat */
+        .in-chat-search { background: var(--md-sys-color-surface-container); padding: 8px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--md-sys-color-outline-variant); animation: slideUp 0.3s cubic-bezier(0.2, 0.0, 0, 1.0); }
+        .in-chat-search input { border: none; background: transparent; outline: none; flex: 1; color: var(--md-sys-color-on-surface); }
 
         /* Menu */
         .menu-container { position: relative; }
-        .dropdown-menu {
-            position: absolute; top: 100%; right: 0;
-            background: var(--md-sys-color-surface-container-high);
-            border-radius: 12px; padding: 8px 0; min-width: 200px;
-            display: none; flex-direction: column; z-index: 100;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            animation: scaleIn 0.2s cubic-bezier(0.2, 0.0, 0, 1.0); transform-origin: top right;
-        }
+        .dropdown-menu { position: absolute; top: 100%; right: 0; background: var(--md-sys-color-surface-container-high); border-radius: 12px; padding: 8px 0; min-width: 200px; display: none; flex-direction: column; z-index: 100; box-shadow: 0 4px 8px rgba(0,0,0,0.2); animation: scaleIn 0.2s cubic-bezier(0.2, 0.0, 0, 1.0); transform-origin: top right; }
         .dropdown-menu.show { display: flex; }
-        .menu-item {
-            padding: 12px 16px; display: flex; align-items: center; gap: 12px;
-            color: var(--md-sys-color-on-surface); background: none; border: none;
-            font-family: inherit; font-size: 14px; cursor: pointer; text-align: left;
-        }
+        .menu-item { padding: 12px 16px; display: flex; align-items: center; gap: 12px; color: var(--md-sys-color-on-surface); background: none; border: none; font-family: inherit; font-size: 14px; cursor: pointer; text-align: left; }
         .menu-item:hover { background: rgba(128,128,128,0.1); }
         
         /* Scroll To Bottom FAB */
-        .scroll-fab {
-            position: fixed; bottom: 24px; right: 24px;
-            width: 40px; height: 40px; border-radius: 50%;
-            background: var(--md-sys-color-surface-container-high);
-            color: var(--md-sys-color-on-surface-variant);
-            border: 1px solid var(--md-sys-color-outline-variant);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 20; opacity: 0; transform: translateY(20px); pointer-events: none;
-            transition: 0.3s;
-        }
+        .scroll-fab { position: fixed; bottom: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: var(--md-sys-color-surface-container-high); color: var(--md-sys-color-on-surface-variant); border: 1px solid var(--md-sys-color-outline-variant); box-shadow: 0 2px 6px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 20; opacity: 0; transform: translateY(20px); pointer-events: none; transition: 0.3s; }
         .scroll-fab.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+        .new-msg-badge { position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background: var(--md-sys-color-error); border-radius: 50%; border: 2px solid var(--md-sys-color-surface-container-high); }
+
+        /* Offline Indicator */
+        .offline-banner { position: fixed; top: 0; left: 50%; transform: translateX(-50%); background: var(--md-sys-color-error); color: var(--md-sys-color-on-error-container); padding: 4px 16px; border-radius: 0 0 8px 8px; font-size: 12px; z-index: 9999; display: flex; align-items: center; gap: 6px; box-shadow: var(--elevation-1); }
 
         /* Calendar Modal */
-        .calendar-card {
-            background: var(--md-sys-color-surface);
-            padding: 0; border-radius: 28px; width: 320px;
-            overflow: hidden; display: flex; flex-direction: column;
-        }
-        .cal-header {
-            background: var(--md-sys-color-surface-container-high);
-            padding: 16px 24px;
-        }
+        .calendar-card { background: var(--md-sys-color-surface); padding: 0; border-radius: 28px; width: 320px; overflow: hidden; display: flex; flex-direction: column; }
+        .cal-header { background: var(--md-sys-color-surface-container-high); padding: 16px 24px; }
         .cal-header h3 { font-size: 14px; color: var(--md-sys-color-on-surface-variant); font-weight: 500; }
         .cal-header h2 { font-size: 32px; color: var(--md-sys-color-on-surface); font-weight: 400; margin-top: 4px; }
-        
         .cal-grid { padding: 16px 12px 0; }
         .cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 0 12px; }
         .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; margin-bottom: 8px; }
         .cal-day-label { font-size: 12px; color: var(--md-sys-color-on-surface-variant); width: 36px; }
-        
         .cal-dates { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 16px; }
-        .cal-date { 
-            width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
-            border-radius: 50%; font-size: 14px; cursor: pointer; color: var(--md-sys-color-on-surface);
-        }
+        .cal-date { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 14px; cursor: pointer; color: var(--md-sys-color-on-surface); }
         .cal-date:hover { background: var(--md-sys-color-surface-container-high); }
         .cal-date.active { background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary); }
         .cal-date.empty { pointer-events: none; }
 
         /* Settings Modal */
-        .modal-overlay {
-            position: fixed; inset: 0; z-index: 2000;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
-            display: flex; align-items: center; justify-content: center;
-            opacity: 0; visibility: hidden; transition: 0.3s;
-        }
+        .modal-overlay { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: 0.3s; }
         .modal-overlay.active { opacity: 1; visibility: visible; }
-        .settings-card {
-            background: var(--md-sys-color-surface);
-            width: 90%; max-width: 600px; height: 80vh;
-            border-radius: 28px; display: flex; flex-direction: column;
-            overflow: hidden; animation: scaleIn 0.3s var(--anim-enter);
-        }
-        .settings-header {
-            padding: 20px 24px; border-bottom: 1px solid var(--md-sys-color-outline-variant);
-            display: flex; justify-content: space-between; align-items: center;
-        }
+        .settings-card { background: var(--md-sys-color-surface); width: 90%; max-width: 600px; height: 80vh; border-radius: 28px; display: flex; flex-direction: column; overflow: hidden; animation: scaleIn 0.3s var(--anim-enter); }
+        .settings-header { padding: 20px 24px; border-bottom: 1px solid var(--md-sys-color-outline-variant); display: flex; justify-content: space-between; align-items: center; }
         .settings-content { flex: 1; overflow-y: auto; padding: 24px; }
         .setting-section { margin-bottom: 32px; }
         .setting-title { font-size: 14px; font-weight: 500; color: var(--md-sys-color-primary); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 1px; }
@@ -539,92 +401,39 @@
         .setting-label h4 { font-size: 16px; font-weight: 400; margin-bottom: 4px; }
         .setting-label p { font-size: 14px; color: var(--md-sys-color-on-surface-variant); }
         
-        /* Toggle Switch */
         .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: var(--md-sys-color-surface-container-high); border-radius: 34px; transition: .4s;
-            border: 1px solid var(--md-sys-color-outline);
-        }
-        .slider:before {
-            position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 3px;
-            background-color: var(--md-sys-color-outline); border-radius: 50%; transition: .4s;
-        }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--md-sys-color-surface-container-high); border-radius: 34px; transition: .4s; border: 1px solid var(--md-sys-color-outline); }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 3px; background-color: var(--md-sys-color-outline); border-radius: 50%; transition: .4s; }
         input:checked + .slider { background-color: var(--md-sys-color-primary); border-color: var(--md-sys-color-primary); }
         input:checked + .slider:before { transform: translateX(20px); background-color: var(--md-sys-color-on-primary); }
 
-        /* Accordion */
         .faq-item { border-bottom: 1px solid var(--md-sys-color-outline-variant); }
-        .faq-question {
-            width: 100%; padding: 16px 0; text-align: left; background: none; border: none;
-            font-size: 16px; color: var(--md-sys-color-on-surface); cursor: pointer;
-            display: flex; justify-content: space-between;
-        }
+        .faq-question { width: 100%; padding: 16px 0; text-align: left; background: none; border: none; font-size: 16px; color: var(--md-sys-color-on-surface); cursor: pointer; display: flex; justify-content: space-between; }
         .faq-answer { display: none; padding-bottom: 16px; color: var(--md-sys-color-on-surface-variant); line-height: 1.5; }
         .faq-item.open .faq-answer { display: block; }
 
-        /* Background Selector */
         .bg-selector { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
-        .bg-option {
-            height: 60px; border-radius: 8px; cursor: pointer; border: 2px solid transparent;
-            background-size: cover; position: relative; overflow: hidden;
-        }
+        .bg-option { height: 60px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; background-size: cover; position: relative; overflow: hidden; }
         .bg-option.selected { border-color: var(--md-sys-color-primary); }
-        .bg-1 { background-color: #EFE7DE; }
+        .bg-1 { background-color: #ECE5DD; }
         .bg-2 { background-color: #d1d7db; }
         .bg-3 { background-color: #e5ddd5; }
         .bg-4 { background-color: #ffffff; }
 
-        /* Install Sheet - Hidden by default on PC */
         .install-sheet { display: none; }
-        
-        /* Settings Install Card */
-        .install-card {
-            background: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-on-primary-container);
-            padding: 16px; border-radius: 12px; margin-bottom: 32px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
+        .install-card { background: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); padding: 16px; border-radius: 12px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; }
         .install-card h4 { margin-bottom: 4px; }
         .install-card p { font-size: 12px; }
-        .install-card .m3-btn {
-            width: auto; height: 36px; padding: 0 16px;
-            font-size: 14px; white-space: nowrap; flex-shrink: 0;
-            box-shadow: none;
-        }
+        .install-card .m3-btn { width: auto; height: 36px; padding: 0 16px; font-size: 14px; white-space: nowrap; flex-shrink: 0; box-shadow: none; }
 
         @media (max-width: 768px) {
-            .sidebar { 
-                width: 100%; 
-                flex: 1; 
-                border-right: none;
-                /* Mobile-only background gradient */
-                background: radial-gradient(circle at 0% 0%, #c1e8fb49 0%, transparent 50%), 
-                            radial-gradient(circle at 100% 100%, #89f8c86b 0%, transparent 50%), 
-                            #fbfdf96c;
-            }
-            
-            /* Dark mode override for sidebar on mobile */
-            [data-theme="dark"] .sidebar {
-                 background: radial-gradient(circle at 0% 0%, #001F29 0%, transparent 50%), 
-                            radial-gradient(circle at 100% 100%, #002114 0%, transparent 50%), 
-                            #111412;
-            }
-
+            .sidebar { width: 100%; flex: 1; border-right: none; background: radial-gradient(circle at 0% 0%, #c1e8fb49 0%, transparent 50%), radial-gradient(circle at 100% 100%, #89f8c86b 0%, transparent 50%), #fbfdf96c; }
+            [data-theme="dark"] .sidebar { background: radial-gradient(circle at 0% 0%, #001F29 0%, transparent 50%), radial-gradient(circle at 100% 100%, #002114 0%, transparent 50%), #111412; }
             .chat-area { position: fixed; inset: 0; z-index: 20; transform: translateX(100%); transition: transform 0.3s; background-color: var(--chat-bg-color); }
             .chat-area.active { transform: translateX(0); }
             .back-btn { display: flex !important; margin-right: 8px; }
-            
-            /* Bottom Sheet Install Prompt - Only visible on Mobile */
-            .install-sheet {
-                display: block; /* Enable it for mobile logic */
-                position: fixed; bottom: 0; left: 0; right: 0; z-index: 3000;
-                background: var(--md-sys-color-surface);
-                border-top-left-radius: 28px; border-top-right-radius: 28px;
-                padding: 24px; box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-                transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1);
-            }
+            .install-sheet { display: block; position: fixed; bottom: 0; left: 0; right: 0; z-index: 3000; background: var(--md-sys-color-surface); border-top-left-radius: 28px; border-top-right-radius: 28px; padding: 24px; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1); }
             .install-sheet.visible { transform: translateY(0); }
             .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
             .sheet-content { text-align: center; }
@@ -632,48 +441,13 @@
         }
         .back-btn { display: none; margin-right: 8px; }
 
-        /* UTILITY MODALS STYLING FIX */
-        .modal-card {
-            background-color: var(--md-sys-color-surface);
-            padding: 24px;
-            border-radius: 28px;
-            width: 90%;
-            max-width: 320px;
-            transform: scale(0.9); transition: 0.3s cubic-bezier(0.2, 0, 0, 1);
-            animation: scaleIn 0.3s var(--anim-enter);
-        }
+        .modal-card { background-color: var(--md-sys-color-surface); padding: 24px; border-radius: 28px; width: 90%; max-width: 320px; transform: scale(0.9); transition: 0.3s cubic-bezier(0.2, 0, 0, 1); animation: scaleIn 0.3s var(--anim-enter); }
         .modal-overlay.active .modal-card { transform: scale(1); }
-        
-        .modal-card.utility {
-            width: 320px;
-            padding: 24px;
-            border-radius: 28px;
-        }
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-top: 24px;
-        }
-        .modal-actions .m3-btn {
-            width: auto;
-            min-width: 80px;
-            height: 40px;
-            padding: 0 16px;
-        }
-
-        /* Empty State Centering */
-        .empty-state {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100%; width: 100%; color: var(--md-sys-color-outline);
-            text-align: center; animation: fadeIn 0.5s;
-        }
-
-        /* Skeleton */
-        .skeleton {
-            background: linear-gradient(90deg, var(--md-sys-color-surface-container-high) 25%, var(--md-sys-color-surface-container) 50%, var(--md-sys-color-surface-container-high) 75%);
-            background-size: 200% 100%; animation: shimmer 1.5s infinite linear; border-radius: 4px;
-        }
+        .modal-card.utility { width: 320px; padding: 24px; border-radius: 28px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+        .modal-actions .m3-btn { width: auto; min-width: 80px; height: 40px; padding: 0 16px; }
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; color: var(--md-sys-color-outline); text-align: center; animation: fadeIn 0.5s; }
+        .skeleton { background: linear-gradient(90deg, var(--md-sys-color-surface-container-high) 25%, var(--md-sys-color-surface-container) 50%, var(--md-sys-color-surface-container-high) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite linear; border-radius: 4px; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         .skel-contact { display: flex; align-items: center; padding: 12px 16px; gap: 16px; width: 100%; }
         .skel-avatar { width: 48px; height: 48px; border-radius: 50%; }
@@ -683,16 +457,79 @@
         .skel-left { align-self: flex-start; border-bottom-left-radius: 0; }
         .skel-right { align-self: flex-end; border-bottom-right-radius: 0; width: 50%; }
 
+        /* --- SETTINGS SIDEBAR --- */
+        .settings-sidebar {
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            width: 400px;
+            background: var(--md-sys-color-surface);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--md-sys-color-outline-variant);
+            box-shadow: var(--elevation-2);
+            transform: translateX(-100%);
+            transition: transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        .settings-sidebar.active {
+            transform: translateX(0);
+        }
+
+        /* Mobile full-width override */
+        @media (max-width: 768px) {
+            .settings-sidebar {
+                width: 100%;
+                border-right: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+        /* Pin all utility modals to the bottom */
+        .modal-card.utility {
+            position: absolute;
+            bottom: 0;
+            width: 100% !important;
+            max-width: 100%;
+            border-radius: 28px 28px 0 0;
+            padding: 32px 24px 24px;
+            transform: translateY(100%) scale(1);
+            animation: none; /* Override the desktop scaleIn */
+            transition: transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+        }
+        
+        /* Add the M3 drag handle indicator */
+        .modal-card.utility::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 32px;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--md-sys-color-outline-variant);
+        }
+
+        .modal-overlay.active .modal-card.utility {
+            transform: translateY(0) scale(1);
+        }
+    }
+
     </style>
 </head>
 <body>
+
+    <div id="offlineIndicator" class="offline-banner hidden">
+        <span class="material-symbols-rounded" style="font-size: 16px;">cloud_off</span> You are offline
+    </div>
 
     <!-- AUTH SCREEN -->
     <div id="auth-screen">
         <div class="auth-card">
             <div style="text-align: center;" class="anim-up delay-1">
                 <div class="brand-icon">
-                    <img src="icon.svg" alt="App Logo">
+                    <img src="/assets/icon.svg" alt="App Logo">
                 </div>
                 <h1 style="font-family:'Google Sans'; font-size:28px; margin:8px 0; font-weight:400;">Welcome Back</h1>
                 <p style="color:var(--md-sys-color-on-surface-variant); font-size:14px;">Sign in to your chat log</p>
@@ -729,36 +566,30 @@
         </div>
     </div>
 
-    <!-- LOCK SCREEN (PIN / BIO / LOCKOUT) -->
+    <!-- LOCK SCREEN -->
     <div id="lock-screen">
-        <!-- LOCKOUT UI -->
         <div id="lockoutUI" class="hidden lockout-container">
-            <div class="lockout-icon-bg">
-                <span class="material-symbols-rounded lockout-icon" id="lockoutIcon">lock_clock</span>
-            </div>
+            <div class="lockout-icon-bg"><span class="material-symbols-rounded lockout-icon" id="lockoutIcon">lock_clock</span></div>
             <h2 class="lockout-title" id="lockoutTitle">Locked</h2>
             <p class="lockout-msg" id="lockoutMsg">Too many attempts.</p>
             <div class="lockout-timer" id="lockoutTimer">00:30</div>
             <p class="lockout-sub" id="lockoutSub">Try again later</p>
-            <div id="permanentLockActions" class="hidden" style="margin-top:24px; display:flex; gap:12px;">
+            <div id="permanentLockActions" class="hidden lockout-actions">
                  <button class="m3-btn filled" onclick="showForgotPin()" style="background:var(--md-sys-color-error); width:auto; padding:0 32px;">Forgot PIN</button>
             </div>
         </div>
 
-        <!-- HEADER (Hidden during lockout) -->
         <div class="lock-header" id="lockHeader">
             <span class="material-symbols-rounded lock-icon" id="lockIcon">lock</span>
             <div class="lock-title" id="lockTitle">Enter PIN</div>
             <div class="lock-sub" id="lockSub">Protected by App Lock</div>
         </div>
         
-        <!-- PIN UI -->
         <div id="pinUI">
             <div class="pin-dots" id="pinDots">
                 <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
                 <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
             </div>
-
             <div class="keypad">
                 <button class="key-btn ripple-surface" onclick="pressKey(1)">1</button>
                 <button class="key-btn ripple-surface" onclick="pressKey(2)">2</button>
@@ -775,7 +606,6 @@
             </div>
         </div>
 
-        <!-- BIO ONLY UI -->
         <div id="bioUI" class="hidden" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;">
              <div class="ripple-surface" onclick="triggerBiometricAuth()" style="width:96px; height:96px; border-radius:50%; background:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); display:flex; align-items:center; justify-content:center; cursor:pointer;">
                 <span class="material-symbols-rounded" style="font-size:48px;">fingerprint</span>
@@ -783,9 +613,7 @@
             <p style="margin-top:16px; color:var(--md-sys-color-on-surface-variant);">Tap to Unlock</p>
         </div>
 
-        <div style="text-align: center;">
-            <button class="forgot-pin-btn" onclick="showForgotPin()">Forgot PIN / Use Password</button>
-        </div>
+        <div style="text-align: center;"><button class="forgot-pin-btn" onclick="showForgotPin()">Forgot PIN / Use Password</button></div>
     </div>
 
     <!-- MAIN APP -->
@@ -793,17 +621,9 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0;">
-                    <!-- Title -->
-                <h2 style="font-family: 'Google Sans', sans-serif; font-size: 20px; font-weight: 500; color: var(--md-sys-color-on-surface); margin: 0;">
-                    Chat Log
-                </h2>
-
-                <!-- Version (Tighter Gap) -->
-                <span style="font-family: 'Google Sans', sans-serif; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); background-color: var(--md-sys-color-surface-container-high); padding: 2px 8px; border-radius: 100px; display: inline-flex; align-items: center;">
-                    v3.10.5
-                </span>
+                    <h2 style="font-family: 'Google Sans', sans-serif; font-size: 20px; font-weight: 500; color: var(--md-sys-color-on-surface); margin: 0;">Chat Log</h2>
+                    <span style="font-family: 'Google Sans', sans-serif; font-size: 12px; font-weight: 500; color: var(--md-sys-color-on-surface-variant); background-color: var(--md-sys-color-surface-container-high); padding: 2px 8px; border-radius: 100px; display: inline-flex; align-items: center;">v4.0</span>
                 </div>
-
                 <div style="display:flex; gap: 8px;">
                     <button class="icon-btn ripple-surface" onclick="refreshApp()"><span class="material-symbols-rounded">refresh</span></button>
                     <button class="icon-btn ripple-surface" onclick="openSettings()" title="Settings"><span class="material-symbols-rounded">settings</span></button>
@@ -845,7 +665,16 @@
                 <button class="icon-btn" style="width:30px; height:30px;" onclick="toggleChatSearch()"><span class="material-symbols-rounded">close</span></button>
             </div>
 
+            <!-- Cinematic Loading UI -->
+            <div class="sync-spinner-wrapper" id="syncSpinnerWrap">
+                <div class="sync-chip">
+                    <div class="spinner"></div>
+                    <span>Syncing messages...</span>
+                </div>
+            </div>
+
             <div class="chat-bg-pattern"></div>
+            
             <div class="chat-content" id="messagesContainer">
                 <div class="empty-state">
                     <span class="material-symbols-rounded" style="font-size: 64px; opacity: 0.2;">chat</span>
@@ -853,102 +682,80 @@
                 </div>
             </div>
             
-            <!-- Scroll to Bottom FAB - Now triggers SMOOTH scroll manually -->
             <button class="scroll-fab" id="scrollFab" onclick="scrollToBottom('smooth')">
                 <span class="material-symbols-rounded">arrow_downward</span>
+                <span id="newMsgBadge" class="new-msg-badge hidden"></span>
             </button>
         </main>
     </div>
 
-    <!-- SETTINGS MODAL -->
-    <div id="settingsModal" class="modal-overlay">
-        <div class="settings-card">
-            <div class="settings-header">
-                <h2 style="font-family:'Google Sans'">Settings</h2>
-                <button class="icon-btn" onclick="closeModal('settingsModal')"><span class="material-symbols-rounded">close</span></button>
+    <!-- MODALS SECTION -->
+    <!-- SETTINGS SIDEBAR -->
+    <div id="settingsSidebar" class="settings-sidebar">
+        <div class="settings-header" style="height: 64px; padding: 0 16px; justify-content: flex-start; gap: 24px; background: var(--md-sys-color-surface-container-high);">
+            <button class="icon-btn ripple-surface" onclick="closeSettingsSidebar()">
+                <span class="material-symbols-rounded">arrow_back</span>
+            </button>
+            <h2 style="font-family:'Lexend'; font-size: 20px; font-weight: 500; margin: 0;">Settings</h2>
+        </div>
+        
+        <div class="settings-content">
+            <div id="installAppSection" class="install-card hidden">
+                <div><h4>Install App</h4><p>Get the app for better experience</p></div>
+                <button class="m3-btn filled" onclick="installPWA()">Install</button>
             </div>
-            <div class="settings-content">
-                
-                <!-- Install App -->
-                <div id="installAppSection" class="install-card hidden">
-                    <div>
-                        <h4>Install App</h4>
-                        <p>Get the app for better experience</p>
-                    </div>
-                    <button class="m3-btn filled" onclick="installPWA()">Install</button>
-                </div>
-                
-                <!-- Security (Only visible on Mobile App) -->
-                <div class="setting-section hidden" id="mobileSecuritySection">
-                    <div class="setting-title">App Security</div>
-                    <div class="setting-row">
-                        <div class="setting-label"><h4>PIN Lock</h4><p>Require PIN on startup</p></div>
-                        <label class="switch"><input type="checkbox" id="pinLockToggle" onchange="togglePinSetting()"><span class="slider"></span></label>
-                    </div>
-                    <div class="setting-row">
-                        <div class="setting-label"><h4>Fingerprint Lock</h4><p>Use biometrics</p></div>
-                        <label class="switch"><input type="checkbox" id="bioLockToggle" onchange="toggleBioSetting()"><span class="slider"></span></label>
-                    </div>
-                </div>
-
-                <!-- Profile -->
-                <div class="setting-section">
-                    <div class="setting-title">Profile</div>
-                    <div class="m3-field"><input type="text" id="profileName" class="m3-input" placeholder=" " onchange="saveProfile()"><label class="m3-label">Your Name</label></div>
-                    <div class="m3-field"><input type="text" id="profilePhone" class="m3-input" placeholder=" " onchange="saveProfile()"><label class="m3-label">Phone Number</label></div>
-                </div>
-
-                <!-- Appearance -->
-                <div class="setting-section">
-                    <div class="setting-title">Appearance</div>
-                    <div class="setting-row">
-                        <div class="setting-label"><h4>Dark Mode</h4><p>Easier on the eyes</p></div>
-                        <label class="switch"><input type="checkbox" id="darkModeToggle" onchange="toggleTheme()"><span class="slider"></span></label>
-                    </div>
-                    <div class="setting-row">
-                        <div class="setting-label"><h4>Text Size</h4><p>Adjust message font size</p></div>
-                        <input type="range" min="12" max="20" value="15" oninput="changeFontSize(this.value)">
-                    </div>
-                    
-                    <div class="setting-label" style="margin-bottom:8px"><h4>Chat Wallpaper</h4></div>
-                    <div class="bg-selector">
-                        <div class="bg-option bg-1 selected" onclick="changeBg(1)"></div>
-                        <div class="bg-option bg-2" onclick="changeBg(2)"></div>
-                        <div class="bg-option bg-3" onclick="changeBg(3)"></div>
-                        <div class="bg-option bg-4" onclick="changeBg(4)"></div>
-                    </div>
-                </div>
-
-                <!-- Help & Legal -->
-                <div class="setting-section">
-                    <div class="setting-title">Help & Support</div>
-                    <div id="faqContainer">
-                        <!-- FAQs injected via JS -->
-                    </div>
-                    <div style="margin-top:24px; display:flex; gap:12px;">
-                        <button class="m3-btn filled" 
-                                style="background:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); cursor: pointer;" 
-                                onclick="window.open('https://amit.is-a.dev/logger#faq', '_blank')">
-                            View FAQ
-                        </button>
-                    </div>
-                    <div style="margin-top:24px; display:flex; gap:12px;">
-                        <button class="m3-btn filled" style="background:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container)" onclick="window.open('mailto:mail@amit.is-a.dev')">Email Support</button>
-                    </div>
-                </div>
-
-                <div class="setting-section">
-                    <div class="setting-title">Legal</div>
-                    <p style="font-size:12px; color:var(--md-sys-color-on-surface-variant); line-height:1.5;">
-                        <strong>MIT License</strong><br>
-                        <strong>Security:</strong> Logs are stored strictly in your private Firebase. No external access.
-                        <br>Check out this project on <a href="https://amit.is-a.dev/logger">amit.is-a.dev</a> or <a href="https://github.com/notamitgamer/WhatsApp-Logger-Self-Hosted-">Github</a>
-                        <br>Developed by <a href="https://github.com/notamitgamer">@notamitgamer</a>
-                    </p>
-                </div>
-
-                <button class="m3-btn filled" style="background:var(--md-sys-color-error);" onclick="showLogoutModal()">Log Out</button>
+            
+            <div class="setting-section hidden" id="mobileSecuritySection">
+                <div class="setting-title">App Security</div>
+                <div class="setting-row"><div class="setting-label"><h4>PIN Lock</h4><p>Require PIN on startup</p></div><label class="switch"><input type="checkbox" id="pinLockToggle" onchange="togglePinSetting()"><span class="slider"></span></label></div>
+                <div class="setting-row"><div class="setting-label"><h4>Fingerprint Lock</h4><p>Use biometrics</p></div><label class="switch"><input type="checkbox" id="bioLockToggle" onchange="toggleBioSetting()"><span class="slider"></span></label></div>
             </div>
+            
+            <div class="setting-section">
+                <div class="setting-title">Profile</div>
+                <div class="m3-field"><input type="text" id="profileName" class="m3-input" placeholder=" " onchange="saveProfile()"><label class="m3-label">Your Name</label></div>
+                <div class="m3-field"><input type="text" id="profilePhone" class="m3-input" placeholder=" " onchange="saveProfile()"><label class="m3-label">Phone Number</label></div>
+            </div>
+            
+            <div class="setting-section">
+                <div class="setting-title">Appearance</div>
+                <div class="setting-row"><div class="setting-label"><h4>Dark Mode</h4><p>Easier on the eyes</p></div><label class="switch"><input type="checkbox" id="darkModeToggle" onchange="toggleTheme()"><span class="slider"></span></label></div>
+                <div class="setting-row"><div class="setting-label"><h4>Text Size</h4><p>Adjust message font size</p></div><input type="range" min="12" max="20" value="15" oninput="changeFontSize(this.value)"></div>
+                <div class="setting-label" style="margin-bottom:8px"><h4>Chat Wallpaper</h4></div>
+                <div class="bg-selector">
+                    <div class="bg-option bg-1 selected" onclick="changeBg(1)"></div>
+                    <div class="bg-option bg-2" onclick="changeBg(2)"></div>
+                    <div class="bg-option bg-3" onclick="changeBg(3)"></div>
+                    <div class="bg-option bg-4" onclick="changeBg(4)"></div>
+                </div>
+            </div>
+            
+            <div class="setting-section">
+                <div class="setting-title">Storage and Data</div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Local Storage Used</h4>
+                        <p id="localStorageSizeDisplay">Calculating...</p>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <h4>Clear Cache</h4>
+                        <p>Delete all messages, cached chats, and media records locally.</p>
+                    </div>
+                    <button class="m3-btn filled" style="background: var(--md-sys-color-error); width: auto; padding: 0 16px; height: 36px; font-size: 13px;" onclick="clearAppCacheData()">Clear</button>
+                </div>
+            </div>
+            
+            <div class="setting-section">
+                <div class="setting-title">Help & Support</div>
+                <div id="faqContainer"></div>
+                <div style="margin-top:24px; display:flex; gap:12px;">
+                    <button class="m3-btn filled" style="background:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); cursor: pointer;" onclick="window.open('https://amit.is-a.dev/logger#faq', '_blank')">View FAQ</button>
+                </div>
+            </div>
+            
+            <button class="m3-btn filled" style="background:var(--md-sys-color-error); margin-top: 16px;" onclick="showLogoutModal()">Log Out</button>
         </div>
     </div>
 
@@ -964,134 +771,107 @@
         </div>
     </div>
     
-    <!-- FORGOT PIN MODAL -->
     <div id="forgotPinModal" class="modal-overlay">
         <div class="modal-card utility">
             <h3 class="modal-title">Reset App Lock</h3>
             <p style="margin-top:8px; color:var(--md-sys-color-on-surface-variant); font-size:14px;">Enter your server credentials to reset local security.</p>
-            
-            <div class="m3-field" style="margin-top:16px;">
-                 <input type="text" id="resetUsername" class="m3-input" placeholder=" "><label class="m3-label">Username</label>
-            </div>
-            <div class="m3-field">
-                <input type="password" id="resetPassword" class="m3-input" placeholder=" ">
-                <label class="m3-label">Password</label>
-                <button class="eye-toggle" onclick="togglePasswordVisibility('resetPassword', 'resetPassIcon')">
-                    <span class="material-symbols-rounded" id="resetPassIcon">visibility</span>
-                </button>
-            </div>
-
+            <div class="m3-field" style="margin-top:16px;"><input type="text" id="resetUsername" class="m3-input" placeholder=" "><label class="m3-label">Username</label></div>
+            <div class="m3-field"><input type="password" id="resetPassword" class="m3-input" placeholder=" "><label class="m3-label">Password</label><button class="eye-toggle" onclick="togglePasswordVisibility('resetPassword', 'resetPassIcon')"><span class="material-symbols-rounded" id="resetPassIcon">visibility</span></button></div>
             <p id="resetError" style="color:var(--md-sys-color-error); font-size:12px; margin-bottom:12px; display:none;">Invalid credentials</p>
-
-            <div class="modal-actions">
-                <button class="m3-btn text" onclick="closeModal('forgotPinModal')">Cancel</button>
-                <button class="m3-btn filled" id="resetBtn" onclick="attemptPinReset()">
-                    <span class="btn-text">Reset</span>
-                    <div class="spinner"></div>
-                </button>
-            </div>
+            <div class="modal-actions"><button class="m3-btn text" onclick="closeModal('forgotPinModal')">Cancel</button><button class="m3-btn filled" id="resetBtn" onclick="attemptPinReset()"><span class="btn-text">Reset</span><div class="spinner"></div></button></div>
         </div>
     </div>
 
-    <!-- RENAME MODAL -->
     <div id="renameModal" class="modal-overlay">
         <div class="modal-card utility">
             <h3 class="modal-title">Rename Chat</h3>
             <div class="m3-field" style="margin-top:16px;"><input type="text" id="renameInput" class="m3-input"><label class="m3-label">New Name</label></div>
-            <div class="modal-actions">
-                <button class="m3-btn text" onclick="closeModal('renameModal')">Cancel</button>
-                <button class="m3-btn filled" onclick="saveRename()">Save</button>
-            </div>
+            <div class="modal-actions"><button class="m3-btn text" onclick="closeModal('renameModal')">Cancel</button><button class="m3-btn filled" onclick="saveRename()">Save</button></div>
         </div>
     </div>
     
-    <!-- NOT FOUND MODAL -->
+    <!-- HARD REFRESH MODAL -->
+    <div id="refreshModal" class="modal-overlay">
+        <div class="modal-card utility">
+            <h3 class="modal-title">System Sync</h3>
+            
+            <div id="refreshAuthStep">
+                <p style="margin-top:8px; color:var(--md-sys-color-on-surface-variant); font-size:14px;">Enter credentials to perform a full hard sync. This will clear the cache and pull all data.</p>
+                <div class="m3-field" style="margin-top:16px;">
+                    <input type="text" id="refreshUsername" class="m3-input" placeholder=" "><label class="m3-label">Username</label>
+                </div>
+                <div class="m3-field">
+                    <input type="password" id="refreshPassword" class="m3-input" placeholder=" ">
+                    <label class="m3-label">Password</label>
+                    <button class="eye-toggle" onclick="togglePasswordVisibility('refreshPassword', 'refreshPassIcon')"><span class="material-symbols-rounded" id="refreshPassIcon">visibility</span></button>
+                </div>
+                <p id="refreshError" style="color:var(--md-sys-color-error); font-size:12px; margin-bottom:12px; display:none;">Invalid credentials</p>
+                <div class="modal-actions">
+                    <button class="m3-btn text" onclick="closeModal('refreshModal')">Cancel</button>
+                    <button class="m3-btn filled" id="refreshBtn" onclick="startHardRefresh()">
+                        <span class="btn-text">Sync</span><div class="spinner"></div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="refreshProgressStep" class="hidden" style="text-align:center; padding: 16px 0;">
+                <p id="refreshStatusText" style="font-size:14px; font-weight:500; margin-bottom:16px; color:var(--md-sys-color-on-surface);">Starting sync...</p>
+                <div style="width:100%; height:8px; background:var(--md-sys-color-surface-container-highest); border-radius:4px; overflow:hidden;">
+                    <div id="refreshProgressBar" style="width:0%; height:100%; background:var(--md-sys-color-primary); transition:width 0.3s ease;"></div>
+                </div>
+                <p id="refreshPercentText" style="font-size:12px; color:var(--md-sys-color-on-surface-variant); margin-top:8px;">0%</p>
+            </div>
+        </div>
+    </div>
+
     <div id="notFoundModal" class="modal-overlay">
         <div class="modal-card utility">
             <h3 class="modal-title">No Messages Found</h3>
             <p style="margin:16px 0; color:var(--md-sys-color-on-surface-variant);">There are no messages from this date onwards.</p>
-            <div class="modal-actions">
-                <button class="m3-btn filled" onclick="closeModal('notFoundModal')">OK</button>
-            </div>
+            <div class="modal-actions"><button class="m3-btn filled" onclick="closeModal('notFoundModal')">OK</button></div>
         </div>
     </div>
     
-    <!-- PIN SETUP MODAL -->
     <div id="pinSetupModal" class="modal-overlay">
         <div class="modal-card utility" style="text-align:center;">
              <h3 class="modal-title" id="pinSetupTitle">Set 6-Digit PIN</h3>
-             <div class="pin-dots" id="setupDots" style="margin: 24px 0;">
-                <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
-                <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
-            </div>
+             <div class="pin-dots" id="setupDots" style="margin: 24px 0;"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
             <p style="color:var(--md-sys-color-on-surface-variant); font-size:12px;" id="pinSetupMsg">Use the number pad below</p>
-            
             <div class="keypad" style="transform: scale(0.9); margin-bottom:0;">
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(1)">1</button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(2)">2</button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(3)">3</button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(4)">4</button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(5)">5</button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(6)">6</button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(7)">7</button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(8)">8</button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(9)">9</button>
-                <button class="key-btn ripple-surface" style="visibility:hidden"> </button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(0)">0</button>
-                <button class="key-btn ripple-surface" onclick="pressSetupKey(-1)"><span class="material-symbols-rounded key-backspace">backspace</span></button>
+                <button class="key-btn ripple-surface" onclick="pressSetupKey(1)">1</button><button class="key-btn ripple-surface" onclick="pressSetupKey(2)">2</button><button class="key-btn ripple-surface" onclick="pressSetupKey(3)">3</button>
+                <button class="key-btn ripple-surface" onclick="pressSetupKey(4)">4</button><button class="key-btn ripple-surface" onclick="pressSetupKey(5)">5</button><button class="key-btn ripple-surface" onclick="pressSetupKey(6)">6</button>
+                <button class="key-btn ripple-surface" onclick="pressSetupKey(7)">7</button><button class="key-btn ripple-surface" onclick="pressSetupKey(8)">8</button><button class="key-btn ripple-surface" onclick="pressSetupKey(9)">9</button>
+                <button class="key-btn ripple-surface" style="visibility:hidden"> </button><button class="key-btn ripple-surface" onclick="pressSetupKey(0)">0</button><button class="key-btn ripple-surface" onclick="pressSetupKey(-1)"><span class="material-symbols-rounded key-backspace">backspace</span></button>
             </div>
-             <div class="modal-actions" style="justify-content:center; margin-top:8px;">
-                <button class="m3-btn text" onclick="cancelPinSetup()">Cancel</button>
-            </div>
+             <div class="modal-actions" style="justify-content:center; margin-top:8px;"><button class="m3-btn text" onclick="cancelPinSetup()">Cancel</button></div>
         </div>
     </div>
     
-    <!-- CALENDAR MODAL -->
     <div id="calendarModal" class="modal-overlay">
         <div class="calendar-card animate-enter">
-            <div class="cal-header">
-                <h3>Select date</h3>
-                <h2 id="calSelectedDateStr">Tue, Oct 24</h2>
-            </div>
+            <div class="cal-header"><h3>Select date</h3><h2 id="calSelectedDateStr">Tue, Oct 24</h2></div>
             <div class="cal-grid">
                 <div class="cal-nav">
                     <span id="calMonthYear" style="font-weight:500">October 2023</span>
-                    <div style="display:flex; gap:12px;">
-                        <button class="icon-btn" onclick="changeCalMonth(-1)"><span class="material-symbols-rounded">chevron_left</span></button>
-                        <button class="icon-btn" onclick="changeCalMonth(1)"><span class="material-symbols-rounded">chevron_right</span></button>
-                    </div>
+                    <div style="display:flex; gap:12px;"><button class="icon-btn" onclick="changeCalMonth(-1)"><span class="material-symbols-rounded">chevron_left</span></button><button class="icon-btn" onclick="changeCalMonth(1)"><span class="material-symbols-rounded">chevron_right</span></button></div>
                 </div>
-                <div class="cal-days">
-                    <span class="cal-day-label">S</span><span class="cal-day-label">M</span><span class="cal-day-label">T</span>
-                    <span class="cal-day-label">W</span><span class="cal-day-label">T</span><span class="cal-day-label">F</span><span class="cal-day-label">S</span>
-                </div>
+                <div class="cal-days"><span class="cal-day-label">S</span><span class="cal-day-label">M</span><span class="cal-day-label">T</span><span class="cal-day-label">W</span><span class="cal-day-label">T</span><span class="cal-day-label">F</span><span class="cal-day-label">S</span></div>
                 <div class="cal-dates" id="calDatesGrid"></div>
             </div>
-            <div class="modal-actions" style="padding: 16px 24px;">
-                <button class="m3-btn text" onclick="closeModal('calendarModal')">Cancel</button>
-                <button class="m3-btn filled" onclick="jumpToDate()" style="width:auto; padding:0 24px; height:40px;">OK</button>
-            </div>
+            <div class="modal-actions" style="padding: 16px 24px;"><button class="m3-btn text" onclick="closeModal('calendarModal')">Cancel</button><button class="m3-btn filled" onclick="jumpToDate()" style="width:auto; padding:0 24px; height:40px;">OK</button></div>
         </div>
     </div>
 
-    <!-- PWA INSTALL SHEET (Mobile Only) -->
     <div id="installSheet" class="install-sheet">
-        <div class="sheet-header">
-            <h3 style="font-family:'Google Sans'; margin: 0;">Install App</h3>
-            <button class="icon-btn" onclick="closeInstallSheet()"><span class="material-symbols-rounded">close</span></button>
-        </div>
+        <div class="sheet-header"><h3 style="font-family:'Google Sans'; margin: 0;">Install App</h3><button class="icon-btn" onclick="closeInstallSheet()"><span class="material-symbols-rounded">close</span></button></div>
         <div class="sheet-content">
-            <div style="width:64px; height:64px; margin:0 auto 16px; display:flex; align-items:center; justify-content:center;">
-                <img src="icon.svg" alt="App Logo" style="width:100%; height:100%; object-fit: contain;">
-            </div>
+            <div style="width:64px; height:64px; margin:0 auto 16px; display:flex; align-items:center; justify-content:center;"><img src="/assets/icon.svg" alt="App Logo" style="width:100%; height:100%; object-fit: contain;"></div>
             <p style="color:var(--md-sys-color-on-surface-variant); margin-bottom:24px;">Install WhatsApp Logger App for a better experience, full screen view, and enhanced security.</p>
-            <div class="sheet-actions">
-                <button class="m3-btn filled" onclick="installPWA()">Install App</button>
-                <button class="m3-btn text" onclick="closeInstallSheet()">Continue in Browser</button>
-            </div>
+            <div class="sheet-actions"><button class="m3-btn filled" onclick="installPWA()">Install App</button><button class="m3-btn text" onclick="closeInstallSheet()">Continue in Browser</button></div>
         </div>
     </div>
 
+    <!-- MAIN APP SCRIPT -->
     <script>
         const RENDER_BACKEND_URL = ""; 
         const firebaseConfig = {
@@ -1106,45 +886,118 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         let activeChatId = null;
+        let isCurrentChatGroup = false;
         let deferredPrompt;
         let currentMessages = [];
         
+        // --- INDEXED DB CACHING ---
+        const DB_NAME = 'WPLoggerDB';
+        const DB_VERSION = 2; // Incremented for chat list cache
+        let dbInstance = null;
+        let isIdbSupported = true;
+
+        function initIndexedDB() {
+            return new Promise((resolve) => {
+                if (!window.indexedDB) {
+                    isIdbSupported = false;
+                    resolve();
+                    return;
+                }
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains('messages')) {
+                        const store = database.createObjectStore('messages', { keyPath: 'id' });
+                        store.createIndex('chatId', 'chatId', { unique: false });
+                        store.createIndex('timestamp', 'timestamp', { unique: false });
+                    }
+                    if (!database.objectStoreNames.contains('chats')) {
+                        database.createObjectStore('chats', { keyPath: 'id' });
+                    }
+                };
+                req.onsuccess = (e) => { dbInstance = e.target.result; resolve(); };
+                req.onerror = (e) => { 
+                    console.warn('IDB init error', e); 
+                    isIdbSupported = false; 
+                    resolve(); 
+                };
+            });
+        }
+
+        async function getCachedMessages(chatId) {
+            if(!isIdbSupported || !dbInstance) return [];
+            return new Promise((resolve) => {
+                try {
+                    const tx = dbInstance.transaction('messages', 'readonly');
+                    const store = tx.objectStore('messages');
+                    const index = store.index('chatId');
+                    const req = index.getAll(chatId);
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                } catch(e) { resolve([]); }
+            });
+        }
+
+        async function saveCachedMessages(messages) {
+            if(!isIdbSupported || !dbInstance) return;
+            return new Promise((resolve) => {
+                try {
+                    const tx = dbInstance.transaction('messages', 'readwrite');
+                    const store = tx.objectStore('messages');
+                    messages.forEach(m => store.put(m));
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => resolve();
+                } catch(e) { resolve(); }
+            });
+        }
+
+        async function getCachedChats() {
+            if(!isIdbSupported || !dbInstance) return [];
+            return new Promise((resolve) => {
+                try {
+                    const tx = dbInstance.transaction('chats', 'readonly');
+                    const store = tx.objectStore('chats');
+                    const req = store.getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                } catch(e) { resolve([]); }
+            });
+        }
+
+        async function saveCachedChats(chats) {
+            if(!isIdbSupported || !dbInstance) return;
+            return new Promise((resolve) => {
+                try {
+                    const tx = dbInstance.transaction('chats', 'readwrite');
+                    const store = tx.objectStore('chats');
+                    chats.forEach(c => store.put(c));
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => resolve();
+                } catch(e) { resolve(); }
+            });
+        }
+        
         // --- SECURITY VARS ---
-        let enteredPin = "";
-        let setupPin = "";
-        let setupStep = 0; 
-        let isLocked = false;
-        // Lockout Variables
+        let enteredPin = ""; let setupPin = ""; let setupStep = 0; let isLocked = false;
         let failAttempts = parseInt(localStorage.getItem('wp_fail_attempts') || '0');
         let lockUntil = parseInt(localStorage.getItem('wp_lock_until') || '0');
         let lockoutTimerInterval;
-        
-        // --- CALENDAR VARS ---
-        let calCurrentDate = new Date();
-        let calSelectedDate = new Date();
+        let calCurrentDate = new Date(); let calSelectedDate = new Date();
 
-        // --- HELPERS ---
         const arrayBufferToBase64 = (buffer) => {
-            let binary = '';
-            const bytes = new Uint8Array(buffer);
-            const len = bytes.byteLength;
+            let binary = ''; const bytes = new Uint8Array(buffer); const len = bytes.byteLength;
             for (let i = 0; i < len; i++) binary += String.fromCharCode(bytes[i]);
             return window.btoa(binary);
         };
         const base64ToArrayBuffer = (base64) => {
-            const binary_string = window.atob(base64);
-            const len = binary_string.length;
-            const bytes = new Uint8Array(len);
+            const binary_string = window.atob(base64); const len = binary_string.length; const bytes = new Uint8Array(len);
             for (let i = 0; i < len; i++) bytes[i] = binary_string.charCodeAt(i);
             return bytes.buffer;
         };
         
         function formatDividerDate(ts) {
-            const date = new Date(ts * 1000);
-            const today = new Date();
-            const yesterday = new Date();
+            const date = new Date(ts * 1000); const today = new Date(); const yesterday = new Date();
             yesterday.setDate(yesterday.getDate() - 1);
-            
             if (date.toDateString() === today.toDateString()) return "Today";
             if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
             return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -1152,18 +1005,23 @@
 
         // --- PWA INSTALLATION ---
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.protocol === 'http:')) {
-            navigator.serviceWorker.register('sw-wpChat.js').catch(err => {
+            navigator.serviceWorker.register('/assets/sw-wpChat.js').catch(err => {
                 console.warn('SW Register Fail:', err);
             });
+            // Reconnect Sync trigger
+            window.addEventListener('online', () => {
+                if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage('sync_on_reconnect');
+            });
         }
+        
         window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault(); 
-            deferredPrompt = e;
+            e.preventDefault(); deferredPrompt = e;
             document.getElementById('installAppSection').classList.remove('hidden');
             if (window.innerWidth <= 768) {
                 setTimeout(() => document.getElementById('installSheet').classList.add('visible'), 2000);
             }
         });
+        
         async function installPWA() {
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
@@ -1175,18 +1033,28 @@
             deferredPrompt = null;
         }
 
-        function closeInstallSheet() {
-            document.getElementById('installSheet').classList.remove('visible');
-        }
+        function closeInstallSheet() { document.getElementById('installSheet').classList.remove('visible'); }
 
-        // --- AUTH & BOOT SEQUENCE ---
+        // --- BOOT SEQUENCE ---
         function isMobileApp() {
             const isStandalone = (window.matchMedia('(display-mode: standalone)').matches) || (window.navigator.standalone) || document.referrer.includes('android-app://');
-            const isMobile = window.innerWidth <= 768;
-            return isStandalone && isMobile;
+            return isStandalone && window.innerWidth <= 768;
         }
 
-        window.onload = () => {
+        window.onload = async () => {
+            await initIndexedDB();
+
+            if (!navigator.onLine) {
+                document.getElementById('offlineIndicator').classList.remove('hidden');
+            }
+            window.addEventListener('online', () => {
+                document.getElementById('offlineIndicator').classList.add('hidden');
+                loadChats();
+            });
+            window.addEventListener('offline', () => {
+                document.getElementById('offlineIndicator').classList.remove('hidden');
+            });
+
             if (localStorage.getItem('theme') === 'dark') {
                 document.body.setAttribute('data-theme', 'dark');
                 document.getElementById('darkModeToggle').checked = true;
@@ -1199,12 +1067,10 @@
 
             if(isMobileApp()) {
                 document.getElementById('mobileSecuritySection').classList.remove('hidden');
-                
                 const hasPin = localStorage.getItem('wp_app_pin');
                 const useBio = localStorage.getItem('wp_app_bio') === 'true';
                 document.getElementById('pinLockToggle').checked = !!hasPin;
                 document.getElementById('bioLockToggle').checked = useBio;
-
                 const authValid = localStorage.getItem('wp_auth_expiry') > Date.now();
                 
                 if (authValid && (hasPin || useBio)) {
@@ -1227,152 +1093,93 @@
                 }
             }
             
-            // Scroll Listener for FAB
             document.getElementById('messagesContainer').addEventListener('scroll', function() {
                 const fab = document.getElementById('scrollFab');
-                const st = this.scrollTop;
-                const sh = this.scrollHeight;
-                const ch = this.clientHeight;
-                
-                // Show if we are more than 500px from the bottom
-                if (sh - st - ch > 500) {
+                if (this.scrollHeight - this.scrollTop - this.clientHeight > 500) {
                     fab.classList.add('visible');
                 } else {
                     fab.classList.remove('visible');
+                    document.getElementById('newMsgBadge').classList.add('hidden');
                 }
             });
 
-            // Fix for mobile keyboard covering inputs
-            const inputs = document.querySelectorAll('input[type="text"], input[type="password"]');
-            inputs.forEach(input => {
+            document.querySelectorAll('input[type="text"], input[type="password"]').forEach(input => {
                 input.addEventListener('focus', () => {
                     if (window.innerWidth <= 768) {
-                        setTimeout(() => {
-                            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }, 300);
+                        setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
                     }
                 });
             });
         };
 
-        // --- LOCK SCREEN & LOCKOUT LOGIC ---
+        // --- LOCK SCREEN LOGIC ---
         function initLockScreen(hasPin, useBio) {
             const lockScreen = document.getElementById('lock-screen');
-            lockScreen.classList.add('active');
-            isLocked = true;
-            enteredPin = "";
+            lockScreen.classList.add('active'); isLocked = true; enteredPin = "";
             updatePinDots(0);
-            
-            // Check Lockout State First
             if (checkLockoutState()) return;
 
             if(hasPin) {
-                document.getElementById('pinUI').classList.remove('hidden');
-                document.getElementById('bioUI').classList.add('hidden');
-                document.getElementById('lockTitle').innerText = "Enter PIN";
-                document.getElementById('lockIcon').innerText = "lock";
+                document.getElementById('pinUI').classList.remove('hidden'); document.getElementById('bioUI').classList.add('hidden');
+                document.getElementById('lockTitle').innerText = "Enter PIN"; document.getElementById('lockIcon').innerText = "lock";
             } else if (useBio && !hasPin) {
-                document.getElementById('pinUI').classList.add('hidden');
-                document.getElementById('bioUI').classList.remove('hidden');
-                document.getElementById('lockTitle').innerText = "Scan Fingerprint";
-                document.getElementById('lockIcon').innerText = "fingerprint";
+                document.getElementById('pinUI').classList.add('hidden'); document.getElementById('bioUI').classList.remove('hidden');
+                document.getElementById('lockTitle').innerText = "Scan Fingerprint"; document.getElementById('lockIcon').innerText = "fingerprint";
                 triggerBiometricAuth();
             }
         }
 
         function checkLockoutState() {
             const now = Date.now();
-            
-            // Permanent Lock
-            if (failAttempts >= 5) {
-                renderPermanentLock();
-                return true;
-            }
-            
-            // Temporary Timer Lock
-            if (lockUntil > now) {
-                startLockoutTimer();
-                return true;
-            }
-            
-            // Reset if timer expired
+            if (failAttempts >= 5) { renderPermanentLock(); return true; }
+            if (lockUntil > now) { startLockoutTimer(); return true; }
             if (lockUntil > 0 && lockUntil <= now) {
-                lockUntil = 0;
-                localStorage.setItem('wp_lock_until', '0');
-                // Don't reset failAttempts to 0 here to keep escalating. 
-                // But we need to hide lockout UI
+                lockUntil = 0; localStorage.setItem('wp_lock_until', '0');
                 document.getElementById('lockoutUI').classList.add('hidden');
                 document.getElementById('lockHeader').classList.remove('hidden');
                 document.getElementById('lock-screen').classList.remove('locked-mode');
             }
-            
             return false;
         }
 
         function handleFailedAttempt() {
-            failAttempts++;
-            localStorage.setItem('wp_fail_attempts', failAttempts);
-
+            failAttempts++; localStorage.setItem('wp_fail_attempts', failAttempts);
             if (failAttempts === 3 || failAttempts === 4) {
-                lockUntil = Date.now() + (30 * 1000); // 30 seconds
-                localStorage.setItem('wp_lock_until', lockUntil);
+                lockUntil = Date.now() + (30 * 1000); localStorage.setItem('wp_lock_until', lockUntil);
                 startLockoutTimer();
             } else if (failAttempts >= 5) {
                 renderPermanentLock();
             } else {
-                // Shake animation for attempt 1 and 2
-                document.getElementById('pinDots').classList.add('shake');
-                updatePinDots(6, true);
-                setTimeout(() => {
-                    document.getElementById('pinDots').classList.remove('shake');
-                    enteredPin = "";
-                    updatePinDots(0);
-                }, 400);
+                document.getElementById('pinDots').classList.add('shake'); updatePinDots(6, true);
+                setTimeout(() => { document.getElementById('pinDots').classList.remove('shake'); enteredPin = ""; updatePinDots(0); }, 400);
             }
         }
 
         function startLockoutTimer() {
-            const ui = document.getElementById('lockoutUI');
-            const screen = document.getElementById('lock-screen');
-            const timerDisplay = document.getElementById('lockoutTimer');
-            
-            ui.classList.remove('hidden');
-            document.getElementById('lockHeader').classList.add('hidden');
-            screen.classList.add('locked-mode'); // Hides PIN/BIO inputs
-            
-            document.getElementById('lockoutTitle').innerText = "Locked";
-            document.getElementById('lockoutMsg').innerText = `Too many attempts (${failAttempts})`;
-            document.getElementById('lockoutSub').innerText = "Try again later";
-            document.getElementById('permanentLockActions').classList.add('hidden');
+            const ui = document.getElementById('lockoutUI'); const screen = document.getElementById('lock-screen'); const timerDisplay = document.getElementById('lockoutTimer');
+            ui.classList.remove('hidden'); document.getElementById('lockHeader').classList.add('hidden'); screen.classList.add('locked-mode'); 
+            document.getElementById('lockoutTitle').innerText = "Locked"; document.getElementById('lockoutMsg').innerText = `Too many attempts (${failAttempts})`;
+            document.getElementById('lockoutSub').innerText = "Try again later"; document.getElementById('permanentLockActions').classList.add('hidden');
             document.getElementById('lockoutTimer').classList.remove('hidden');
-            
             if(lockoutTimerInterval) clearInterval(lockoutTimerInterval);
             
             lockoutTimerInterval = setInterval(() => {
                 const left = Math.ceil((lockUntil - Date.now()) / 1000);
                 if (left <= 0) {
-                    clearInterval(lockoutTimerInterval);
-                    timerDisplay.innerText = "00:00";
-                    // Reset View
+                    clearInterval(lockoutTimerInterval); timerDisplay.innerText = "00:00";
                     initLockScreen(localStorage.getItem('wp_app_pin'), localStorage.getItem('wp_app_bio') === 'true');
-                    document.getElementById('lockoutUI').classList.add('hidden');
-                    document.getElementById('lockHeader').classList.remove('hidden');
+                    document.getElementById('lockoutUI').classList.add('hidden'); document.getElementById('lockHeader').classList.remove('hidden');
                     screen.classList.remove('locked-mode');
                 } else {
-                    const secs = left < 10 ? `0${left}` : left;
-                    timerDisplay.innerText = `00:${secs}`;
+                    timerDisplay.innerText = `00:${left < 10 ? '0'+left : left}`;
                 }
             }, 1000);
         }
 
         function renderPermanentLock() {
-            const ui = document.getElementById('lockoutUI');
-            const screen = document.getElementById('lock-screen');
-            
-            ui.classList.remove('hidden');
+            document.getElementById('lockoutUI').classList.remove('hidden');
             document.getElementById('lockHeader').classList.add('hidden');
-            screen.classList.add('locked-mode');
-            
+            document.getElementById('lock-screen').classList.add('locked-mode');
             document.getElementById('lockoutIcon').innerText = "gpp_bad";
             document.getElementById('lockoutTitle').innerText = "Security Lockout";
             document.getElementById('lockoutMsg').innerText = "Maximum attempts exceeded. App is locked.";
@@ -1382,93 +1189,42 @@
         }
 
         function pressKey(num) {
-            if(num === -1) {
-                enteredPin = enteredPin.slice(0, -1);
-            } else if (enteredPin.length < 6) {
-                enteredPin += num;
-            }
+            if(num === -1) enteredPin = enteredPin.slice(0, -1);
+            else if (enteredPin.length < 6) enteredPin += num;
             updatePinDots(enteredPin.length);
-            
-            if(enteredPin.length === 6) {
-                verifyPin();
-            }
+            if(enteredPin.length === 6) verifyPin();
         }
 
         function updatePinDots(count, isError=false) {
-            const dots = document.querySelectorAll('#pinDots .pin-dot');
-            dots.forEach((d, i) => {
-                if(isError) {
-                    d.classList.add('error');
-                    setTimeout(() => d.classList.remove('error'), 400);
-                } else {
-                    d.classList.remove('error');
-                    if(i < count) d.classList.add('filled');
-                    else d.classList.remove('filled');
-                }
+            document.querySelectorAll('#pinDots .pin-dot').forEach((d, i) => {
+                if(isError) { d.classList.add('error'); setTimeout(() => d.classList.remove('error'), 400); } 
+                else { d.classList.remove('error'); if(i < count) d.classList.add('filled'); else d.classList.remove('filled'); }
             });
         }
 
         function verifyPin() {
-            // Re-check lockout before verifying
             if(checkLockoutState()) return;
-
             const storedPin = localStorage.getItem('wp_app_pin');
             if(storedPin && enteredPin === storedPin) {
-                // Success - Reset Fail Counters
-                failAttempts = 0;
-                localStorage.setItem('wp_fail_attempts', '0');
-                localStorage.setItem('wp_lock_until', '0');
-                
-                const useBio = localStorage.getItem('wp_app_bio') === 'true';
-                if (useBio) {
-                    document.getElementById('pinUI').classList.add('hidden');
-                    document.getElementById('bioUI').classList.remove('hidden');
-                    document.getElementById('lockTitle').innerText = "Verify Identity";
-                    document.getElementById('lockIcon').innerText = "fingerprint";
+                failAttempts = 0; localStorage.setItem('wp_fail_attempts', '0'); localStorage.setItem('wp_lock_until', '0');
+                if (localStorage.getItem('wp_app_bio') === 'true') {
+                    document.getElementById('pinUI').classList.add('hidden'); document.getElementById('bioUI').classList.remove('hidden');
+                    document.getElementById('lockTitle').innerText = "Verify Identity"; document.getElementById('lockIcon').innerText = "fingerprint";
                     triggerBiometricAuth();
-                } else {
-                    unlockApp();
-                }
-            } else {
-                handleFailedAttempt();
-            }
+                } else unlockApp();
+            } else handleFailedAttempt();
         }
 
         async function triggerBiometricAuth() {
             if(checkLockoutState()) return;
-            
-            if(document.getElementById('bioUI').classList.contains('hidden') === false) {
-                 document.getElementById('lockTitle').innerText = "Verify Identity";
-            }
+            if(!document.getElementById('bioUI').classList.contains('hidden')) document.getElementById('lockTitle').innerText = "Verify Identity";
             try {
                 const storedId = localStorage.getItem('wp_bio_id');
-                const options = {
-                    publicKey: {
-                        challenge: new Uint8Array([1, 2, 3, 4]), 
-                        timeout: 60000,
-                        userVerification: "required"
-                    }
-                };
-                if (storedId) {
-                    options.publicKey.allowCredentials = [{
-                        type: 'public-key',
-                        id: base64ToArrayBuffer(storedId),
-                        transports: ['internal']
-                    }];
-                }
+                const options = { publicKey: { challenge: new Uint8Array([1, 2, 3, 4]), timeout: 60000, userVerification: "required" } };
+                if (storedId) options.publicKey.allowCredentials = [{ type: 'public-key', id: base64ToArrayBuffer(storedId), transports: ['internal'] }];
                 const credential = await navigator.credentials.get(options);
-                if(credential) {
-                    // Success Bio - Reset Counters
-                    failAttempts = 0;
-                    localStorage.setItem('wp_fail_attempts', '0');
-                    localStorage.setItem('wp_lock_until', '0');
-                    unlockApp();
-                }
-            } catch (e) { 
-                console.warn("Bio failed", e);
-                // Note: We generally don't lock on Bio failures here as OS handles retries.
-                // But if user cancels and goes to PIN, PIN failures will trigger lock.
-            }
+                if(credential) { failAttempts = 0; localStorage.setItem('wp_fail_attempts', '0'); localStorage.setItem('wp_lock_until', '0'); unlockApp(); }
+            } catch (e) { console.warn("Bio failed", e); }
         }
 
         function unlockApp() {
@@ -1480,205 +1236,128 @@
 
         // --- SECURITY SETTINGS ---
         function togglePinSetting() {
-            const chk = document.getElementById('pinLockToggle');
-            if(chk.checked) openPinSetup();
-            else localStorage.removeItem('wp_app_pin');
+            if(document.getElementById('pinLockToggle').checked) openPinSetup(); else localStorage.removeItem('wp_app_pin');
         }
 
         function toggleBioSetting() {
-            const chk = document.getElementById('bioLockToggle');
-            if(chk.checked) registerBiometric();
-            else {
-                localStorage.removeItem('wp_app_bio');
-                localStorage.removeItem('wp_bio_id');
-            }
+            if(document.getElementById('bioLockToggle').checked) registerBiometric();
+            else { localStorage.removeItem('wp_app_bio'); localStorage.removeItem('wp_bio_id'); }
         }
 
         function openPinSetup() {
             document.getElementById('pinSetupModal').classList.add('active');
-            setupStep = 1;
-            setupPin = "";
-            enteredPin = ""; 
-            updateSetupDots(0);
+            setupStep = 1; setupPin = ""; enteredPin = ""; updateSetupDots(0);
             document.getElementById('pinSetupTitle').innerText = "Set 6-Digit PIN";
             document.getElementById('pinSetupMsg').innerText = "Enter a new PIN";
         }
         
         function updateSetupDots(count) {
-            const dots = document.querySelectorAll('#setupDots .pin-dot');
-            dots.forEach((d, i) => i < count ? d.classList.add('filled') : d.classList.remove('filled'));
+            document.querySelectorAll('#setupDots .pin-dot').forEach((d, i) => i < count ? d.classList.add('filled') : d.classList.remove('filled'));
         }
 
         function pressSetupKey(num) {
-            if(num === -1) {
-                enteredPin = enteredPin.slice(0, -1);
-            } else if (enteredPin.length < 6) {
-                enteredPin += num;
-            }
+            if(num === -1) enteredPin = enteredPin.slice(0, -1);
+            else if (enteredPin.length < 6) enteredPin += num;
             updateSetupDots(enteredPin.length);
 
             if(enteredPin.length === 6) {
                 if(setupStep === 1) {
-                    setupPin = enteredPin;
-                    enteredPin = "";
-                    setupStep = 2;
-                    setTimeout(() => {
-                         updateSetupDots(0);
-                         document.getElementById('pinSetupTitle').innerText = "Confirm PIN";
-                         document.getElementById('pinSetupMsg').innerText = "Re-enter to confirm";
-                    }, 200);
+                    setupPin = enteredPin; enteredPin = ""; setupStep = 2;
+                    setTimeout(() => { updateSetupDots(0); document.getElementById('pinSetupTitle').innerText = "Confirm PIN"; document.getElementById('pinSetupMsg').innerText = "Re-enter to confirm"; }, 200);
                 } else if (setupStep === 2) {
                     if(enteredPin === setupPin) {
                         localStorage.setItem('wp_app_pin', setupPin);
-                        closeModal('pinSetupModal');
-                        enteredPin = "";
+                        closeModal('pinSetupModal'); enteredPin = "";
                     } else {
-                        const dots = document.getElementById('setupDots');
-                        dots.classList.add('shake');
-                        setTimeout(() => {
-                            dots.classList.remove('shake');
-                            enteredPin = "";
-                            setupPin = "";
-                            setupStep = 1;
-                            updateSetupDots(0);
-                            document.getElementById('pinSetupTitle').innerText = "Mismatch. Try Again";
-                            document.getElementById('pinSetupMsg').innerText = "Enter a new PIN";
-                        }, 500);
+                        const dots = document.getElementById('setupDots'); dots.classList.add('shake');
+                        setTimeout(() => { dots.classList.remove('shake'); enteredPin = ""; setupPin = ""; setupStep = 1; updateSetupDots(0); document.getElementById('pinSetupTitle').innerText = "Mismatch. Try Again"; document.getElementById('pinSetupMsg').innerText = "Enter a new PIN"; }, 500);
                     }
                 }
             }
         }
 
-        function cancelPinSetup() {
-            document.getElementById('pinLockToggle').checked = false;
-            closeModal('pinSetupModal');
-        }
+        function cancelPinSetup() { document.getElementById('pinLockToggle').checked = false; closeModal('pinSetupModal'); }
 
         async function registerBiometric() {
             try {
-                const iconPath = new URL('icon.svg', window.location.href).toString();
+                const iconPath = new URL('/assets/icon.svg', window.location.href).toString();
                 const credential = await navigator.credentials.create({
-                    publicKey: {
-                        challenge: new Uint8Array([1, 2, 3, 4]),
-                        rp: { name: "WhatsApp Logger", icon: iconPath },
-                        user: { id: new Uint8Array([1]), name: "User", displayName: "App User" },
-                        pubKeyCredParams: [{type: "public-key", alg: -7}],
-                        authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
-                        timeout: 60000
-                    }
+                    publicKey: { challenge: new Uint8Array([1, 2, 3, 4]), rp: { name: "WhatsApp Logger", icon: iconPath }, user: { id: new Uint8Array([1]), name: "User", displayName: "App User" }, pubKeyCredParams: [{type: "public-key", alg: -7}], authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" }, timeout: 60000 }
                 });
                 
                 if(credential) {
-                    const idBase64 = arrayBufferToBase64(credential.rawId);
-                    localStorage.setItem('wp_bio_id', idBase64);
+                    localStorage.setItem('wp_bio_id', arrayBufferToBase64(credential.rawId));
                     localStorage.setItem('wp_app_bio', 'true');
-                } else { throw new Error("No cred"); }
-            } catch (e) {
-                console.error(e);
-                document.getElementById('bioLockToggle').checked = false;
-            }
+                } else throw new Error();
+            } catch (e) { document.getElementById('bioLockToggle').checked = false; }
         }
 
-        function showForgotPin() {
-            document.getElementById('forgotPinModal').classList.add('active');
-        }
+        function showForgotPin() { document.getElementById('forgotPinModal').classList.add('active'); }
         
         async function attemptPinReset() {
-             const btn = document.getElementById('resetBtn');
-             const err = document.getElementById('resetError');
-             const u = document.getElementById('resetUsername').value;
-             const p = document.getElementById('resetPassword').value;
-             
-             btn.classList.add('loading');
-             btn.disabled = true;
-             err.style.display = 'none';
+             const btn = document.getElementById('resetBtn'); const err = document.getElementById('resetError');
+             btn.classList.add('loading'); btn.disabled = true; err.style.display = 'none';
              
              try {
                 const response = await fetch(`${RENDER_BACKEND_URL}/api/verify`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ username: u, password: p })
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username: document.getElementById('resetUsername').value, password: document.getElementById('resetPassword').value })
                 });
                 const data = await response.json();
                 
                 if(data.success) {
-                    // RESET EVERYTHING
-                    localStorage.removeItem('wp_app_pin');
-                    localStorage.removeItem('wp_app_bio');
-                    localStorage.removeItem('wp_bio_id');
-                    localStorage.removeItem('wp_fail_attempts');
-                    localStorage.removeItem('wp_lock_until');
-                    failAttempts = 0;
-                    lockUntil = 0;
-                    
-                    document.getElementById('pinLockToggle').checked = false;
-                    document.getElementById('bioLockToggle').checked = false;
-                    
-                    // Reset UI State
-                    document.getElementById('lockoutUI').classList.add('hidden');
-                    document.getElementById('lockHeader').classList.remove('hidden');
+                    ['wp_app_pin','wp_app_bio','wp_bio_id','wp_fail_attempts','wp_lock_until'].forEach(k => localStorage.removeItem(k));
+                    failAttempts = 0; lockUntil = 0;
+                    document.getElementById('pinLockToggle').checked = false; document.getElementById('bioLockToggle').checked = false;
+                    document.getElementById('lockoutUI').classList.add('hidden'); document.getElementById('lockHeader').classList.remove('hidden');
                     document.getElementById('lock-screen').classList.remove('locked-mode');
-
-                    closeModal('forgotPinModal');
-                    unlockApp();
-                } else { throw new Error(); }
-             } catch (e) {
-                 err.style.display = 'block';
-             } finally {
-                 btn.classList.remove('loading');
-                 btn.disabled = false;
-             }
+                    closeModal('forgotPinModal'); unlockApp();
+                } else throw new Error();
+             } catch (e) { err.style.display = 'block'; } finally { btn.classList.remove('loading'); btn.disabled = false; }
         }
 
         function togglePasswordVisibility(id, iconId) {
-            const input = document.getElementById(id);
-            const icon = document.getElementById(iconId);
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.innerText = 'visibility_off';
-            } else {
-                input.type = 'password';
-                icon.innerText = 'visibility';
-            }
+            const input = document.getElementById(id); const icon = document.getElementById(iconId);
+            if (input.type === 'password') { input.type = 'text'; icon.innerText = 'visibility_off'; } 
+            else { input.type = 'password'; icon.innerText = 'visibility'; }
         }
 
         async function attemptLogin() {
-            const btn = document.getElementById('loginBtn');
-            const err = document.getElementById('authError');
-            btn.classList.add('loading');
-            btn.disabled = true;
-            err.style.opacity = '0';
-
+            const btn = document.getElementById('loginBtn'); const err = document.getElementById('authError');
+            btn.classList.add('loading'); btn.disabled = true; err.style.opacity = '0';
             try {
                 const response = await fetch(`${RENDER_BACKEND_URL}/api/verify`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        username: document.getElementById('username').value,
-                        password: document.getElementById('password').value
-                    })
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username: document.getElementById('username').value, password: document.getElementById('password').value })
                 });
                 const data = await response.json();
                 if(data.success) {
-                    if(document.getElementById('rememberMe').checked) {
-                        localStorage.setItem('wp_auth_expiry', Date.now() + (3 * 24 * 60 * 60 * 1000));
-                    }
+                    if(document.getElementById('rememberMe').checked) localStorage.setItem('wp_auth_expiry', Date.now() + (3 * 24 * 60 * 60 * 1000));
                     revealApp();
                 } else throw new Error();
-            } catch (e) {
-                err.style.opacity = '1';
-                btn.classList.remove('loading');
-                btn.disabled = false;
+            } catch (e) { err.style.opacity = '1'; btn.classList.remove('loading'); btn.disabled = false; }
+        }
+
+        function revealApp() { document.getElementById('auth-screen').style.display = 'none'; document.getElementById('app-layout').classList.add('visible'); loadChats(); }
+        function openSettings() { 
+            document.getElementById('settingsSidebar').classList.add('active'); 
+            calculateLocalStorageUsage();
+        }
+
+        function closeSettingsSidebar() {
+            document.getElementById('settingsSidebar').classList.remove('active');
+        }
+
+        async function clearAppCacheData() {
+            if (confirm("Are you absolutely sure you want to clear all cached data? This will clear your offline cache databases and instantly reload the workspace application.")) {
+                closeSettingsSidebar(); // Call the new close function
+                document.getElementById('refreshModal').classList.add('active');
+                document.getElementById('refreshAuthStep').classList.add('hidden');
+                document.getElementById('refreshProgressStep').classList.remove('hidden');
+                
+                await executeHardRefresh();
             }
         }
-
-        function revealApp() {
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app-layout').classList.add('visible');
-            loadChats();
-        }
-
-        function openSettings() { document.getElementById('settingsModal').classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         function toggleTheme() {
             const isDark = document.getElementById('darkModeToggle').checked;
@@ -1688,65 +1367,44 @@
         function changeFontSize(val) { document.documentElement.style.setProperty('--base-font-size', `${val}px`); }
         function changeBg(id, save=true) {
             document.querySelectorAll('.bg-option').forEach(el => el.classList.remove('selected'));
-            const colors = ['#EFE7DE', '#d1d7db', '#e5ddd5', '#ffffff'];
+            const colors = ['#ECE5DD', '#d1d7db', '#e5ddd5', '#ffffff'];
             document.documentElement.style.setProperty('--chat-bg-color', colors[id-1]);
             const option = document.querySelector(`.bg-${id}`);
             if(option) option.classList.add('selected');
             if(save) localStorage.setItem('chatBg', id);
         }
-        function saveProfile() {
-            localStorage.setItem('profileName', document.getElementById('profileName').value);
-            localStorage.setItem('profilePhone', document.getElementById('profilePhone').value);
-        }
+        function saveProfile() { localStorage.setItem('profileName', document.getElementById('profileName').value); localStorage.setItem('profilePhone', document.getElementById('profilePhone').value); }
         function populateFAQ() {
             const faqs = [
                 {q: "Is this secure?", a: "Yes, data lives in your private Firebase. No one else can access it."},
                 {q: "Does it track deleted messages?", a: "Yes, once a message is received by the server, it is logged forever, even if the sender deletes it."},
-                {q: "Does my phone need to be online?", a: "No. Once linked, your Render server handles logging even if your phone is powered off."},
-                {q: "Can I reply from here?", a: "No, this is a read-only archive designed for logging and privacy, not active chatting."},
-                {q: "What is the 'Pinger' for?", a: "It keeps your free Render server awake so it never misses a message due to inactivity."}
+                {q: "Does my phone need to be online?", a: "No. Once linked, your Render server handles logging even if your phone is powered off."}
             ];
             const container = document.getElementById('faqContainer');
             faqs.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'faq-item';
+                const div = document.createElement('div'); div.className = 'faq-item';
                 div.innerHTML = `<button class="faq-question" onclick="this.parentElement.classList.toggle('open')">${item.q} <span class="material-symbols-rounded">expand_more</span></button><div class="faq-answer">${item.a}</div>`;
                 container.appendChild(div);
             });
         }
 
-        function toggleChatMenu(event) {
-            if(event) event.stopPropagation();
-            document.getElementById('chatMenu').classList.toggle('show');
-        }
-        
-        document.addEventListener('click', function(e) {
-            const menu = document.getElementById('chatMenu');
-            if(menu.classList.contains('show') && !e.target.closest('.menu-container')) {
-                menu.classList.remove('show');
-            }
-        });
+        function toggleChatMenu(event) { if(event) event.stopPropagation(); document.getElementById('chatMenu').classList.toggle('show'); }
+        document.addEventListener('click', function(e) { const menu = document.getElementById('chatMenu'); if(menu.classList.contains('show') && !e.target.closest('.menu-container')) menu.classList.remove('show'); });
 
-        function toggleChatSearch() {
-            document.getElementById('inChatSearch').classList.toggle('hidden');
-            document.getElementById('chatMenu').classList.remove('show');
-            document.getElementById('msgSearchInput').focus();
-        }
+        function toggleChatSearch() { document.getElementById('inChatSearch').classList.toggle('hidden'); document.getElementById('chatMenu').classList.remove('show'); document.getElementById('msgSearchInput').focus(); }
         
         document.getElementById('msgSearchInput').addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
-            const bubbles = document.querySelectorAll('.msg-bubble');
             let count = 0;
             document.querySelectorAll('.highlight').forEach(span => { const parent = span.parentNode; parent.innerHTML = parent.textContent; });
 
-            bubbles.forEach(b => {
+            document.querySelectorAll('.msg-bubble').forEach(b => {
                 const textDiv = b.querySelector('div:not(.msg-sender):not(.msg-meta)'); 
                 if(textDiv) {
                     const originalText = textDiv.textContent;
                     if(term && originalText.toLowerCase().includes(term)) {
                         b.style.display = 'flex';
-                        const regex = new RegExp(`(${term})`, 'gi');
-                        textDiv.innerHTML = originalText.replace(regex, '<span class="highlight">$1</span>');
+                        textDiv.innerHTML = originalText.replace(new RegExp(`(${term})`, 'gi'), '<span class="highlight">$1</span>');
                         count++;
                     } else {
                         b.style.display = term ? 'none' : 'flex';
@@ -1758,16 +1416,19 @@
         });
 
         async function loadChats() {
-            const list = document.getElementById('contactList');
-            list.innerHTML = '';
-            for(let i=0; i<5; i++) {
-                list.innerHTML += `<div class="skel-contact fade-in"><div class="skeleton skel-avatar"></div><div class="skel-text-col"><div class="skeleton" style="width:60%; height:16px;"></div><div class="skeleton" style="width:40%; height:12px;"></div></div></div>`;
-            }
+            const list = document.getElementById('contactList'); list.innerHTML = '';
+            for(let i=0; i<5; i++) list.innerHTML += `<div class="skel-contact fade-in"><div class="skeleton skel-avatar"></div><div class="skel-text-col"><div class="skeleton" style="width:60%; height:16px;"></div><div class="skeleton" style="width:40%; height:12px;"></div></div></div>`;
+
+            // Load from cache instantly
+            const cachedChats = await getCachedChats();
+            if (cachedChats && cachedChats.length > 0) renderChatList(cachedChats);
+
+            if (!navigator.onLine) return; // Skip network fetch if offline
 
             try {
                 const snap = await db.collection('Chats').get();
                 const groups = {};
-                const excluded = [];
+                const excluded = ['917278779512@s.whatsapp.net', '201554426618024@lid'];
 
                 snap.forEach(doc => {
                     const d = doc.data();
@@ -1782,27 +1443,89 @@
 
                 const chats = Object.values(groups).map(g => ({...g.main, ids: g.ids})).sort((a,b) => b.lastActive - a.lastActive);
                 
-                list.innerHTML = '';
-                if(chats.length === 0) {
-                    list.innerHTML = `<div style="text-align:center; padding:32px; color:var(--md-sys-color-outline);">No chats found</div>`;
-                    return;
-                }
-
-                chats.forEach(c => {
-                    const el = document.createElement('div');
-                    el.className = 'contact-item';
-                    const name = c.customName || c.displayName || c.phoneNumber || c.id;
-                    const isGroup = c.id.includes('@g.us');
-                    const avatarContent = isGroup ? `<span class="material-symbols-rounded">group</span>` : name[0].toUpperCase();
-
-                    el.innerHTML = `<div class="avatar">${avatarContent}</div><div class="contact-info"><div class="contact-name">${name}</div><div class="contact-sub">${c.phoneNumber || c.id}</div></div>`;
-                    el.onclick = () => openChat(c.ids, name, el, isGroup, c.phoneNumber || c.id);
-                    list.appendChild(el);
-                });
+                await saveCachedChats(chats);
+                renderChatList(chats);
             } catch (err) { console.error(err); }
         }
 
-        function openChat(ids, name, el, isGroup, displayId) {
+function renderChatList(chats) {
+    const list = document.getElementById('contactList');
+    list.innerHTML = chats.length === 0 ? `<div style="text-align:center; padding:32px; color:var(--md-sys-color-outline);">No chats found</div>` : '';
+
+    chats.forEach(c => {
+        const el = document.createElement('div'); 
+        el.className = 'contact-item ripple-surface';
+        
+        // Priority: Custom Name > Display Name > Phone Number > Raw ID
+        const primaryName = c.customName || c.displayName || c.phoneNumber || c.id;
+        const isGroup = c.id.includes('@g.us');
+        
+        // Structure: Avatar | [ Name                 Time ]
+        //                   | [ Checkmark/Sender + Msg    ]
+        el.innerHTML = `
+            <div class="avatar">${isGroup ? '<span class="material-symbols-rounded">group</span>' : primaryName[0].toUpperCase()}</div>
+            <div class="contact-info" style="min-width: 0;">
+                <div class="contact-name" style="display:flex; justify-content:space-between; align-items:baseline; width:100%;">
+                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">${primaryName}</span>
+                    <span class="chat-time" style="font-size: 12px; color: var(--md-sys-color-on-surface-variant); font-weight: 400; margin-left: 8px; flex-shrink: 0;"></span>
+                </div>
+                <div class="contact-sub preview-text" style="display:flex; align-items:center; margin-top:2px; color:var(--md-sys-color-on-surface-variant);">
+                    <span class="preview-content" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;">
+                        <span style="opacity:0.5; font-size: 13px;">Syncing...</span>
+                    </span>
+                </div>
+            </div>
+        `;
+        
+        el.onclick = () => openChat(c.ids, primaryName, el, isGroup, c.phoneNumber || c.id);
+        list.appendChild(el);
+
+        // Fetch the latest message asynchronously to prevent blocking the UI render
+        const updatePreview = async () => {
+            let allMsgs = [];
+            for (const id of c.ids) {
+                const msgs = await getCachedMessages(id);
+                allMsgs = allMsgs.concat(msgs);
+            }
+            
+            const contentSpan = el.querySelector('.preview-content');
+            const timeSpan = el.querySelector('.chat-time');
+
+            if (allMsgs.length > 0) {
+                // Sort descending to grab the absolute latest message
+                allMsgs.sort((a, b) => b.timestamp - a.timestamp);
+                const lastMsg = allMsgs[0];
+                
+                // Format Timestamp: Time if today, Date if older
+                const msgDate = new Date(lastMsg.timestamp * 1000);
+                const today = new Date();
+                const isToday = msgDate.toDateString() === today.toDateString();
+                
+                timeSpan.innerText = isToday 
+                    ? msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+                    : msgDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+                // Format Prefix: Double ticks for outgoing, Sender Name for incoming groups
+                let prefix = '';
+                if (lastMsg.fromMe) {
+                    prefix = `<span class="material-symbols-rounded" style="font-size: 16px; vertical-align: text-bottom; margin-right: 4px; color: var(--md-sys-color-outline);">done_all</span>`;
+                } else if (isGroup && lastMsg.senderName && lastMsg.senderName !== "Unknown") {
+                    prefix = `<span style="font-weight: 500;">${lastMsg.senderName}:</span> `;
+                }
+                
+                // Construct the final line (falling back to "Media" if it's an image/video without text)
+                contentSpan.innerHTML = `${prefix}${lastMsg.text || 'Media'}`;
+            } else {
+                contentSpan.innerHTML = `<span style="font-style: italic; opacity: 0.7;">No messages</span>`;
+            }
+        };
+        
+        updatePreview();
+    });
+}
+
+        // --- UPDATED OPEN CHAT: DELTA SYNC + IDB + CINEMATIC UI ---
+        async function openChat(ids, name, el, isGroup, displayId) {
             activeChatId = ids[0];
             isCurrentChatGroup = isGroup;
             document.getElementById('headerName').innerText = name;
@@ -1820,18 +1543,96 @@
             window.unsub = [];
             
             const container = document.getElementById('messagesContainer');
-            container.innerHTML = `<div class="skel-msg-group"><div class="skeleton skel-bubble skel-left"></div><div class="skeleton skel-bubble skel-right" style="width:60%"></div><div class="skeleton skel-bubble skel-left" style="width:30%"></div></div>`;
+            const spinnerWrap = document.getElementById('syncSpinnerWrap');
             
-            const msgs = new Map();
+            // Show cinematic sync UI
+            spinnerWrap.classList.add('active');
+            container.classList.add('syncing');
+            
+            // 1. Fetch from Cache
+            let cachedMsgs = [];
+            for (const id of ids) {
+                const msgs = await getCachedMessages(id);
+                cachedMsgs = cachedMsgs.concat(msgs);
+            }
+            
+            const msgsMap = new Map();
+            cachedMsgs.forEach(m => msgsMap.set(m.id, m));
+            
+            // Render Cache Immediately
+            if (cachedMsgs.length > 0) {
+                renderMsgs(msgsMap);
+                setTimeout(() => scrollToBottom('auto'), 50); // Instantly jump to bottom on load
+            } else {
+                container.innerHTML = `<div class="skel-msg-group"><div class="skeleton skel-bubble skel-left"></div><div class="skeleton skel-bubble skel-right" style="width:60%"></div><div class="skeleton skel-bubble skel-left" style="width:30%"></div></div>`;
+            }
+
+            // 2. Delta Sync with Firebase
+            let lastTs = 0;
+            if (cachedMsgs.length > 0) {
+                lastTs = Math.max(...cachedMsgs.map(m => m.timestamp));
+            }
+            
+            // Artificial delay to let spinner animation glide smoothly if cache was instant
+            await new Promise(r => setTimeout(r, 400));
+            
+            let pendingSyncs = ids.length;
+
             ids.forEach(id => {
-                window.unsub.push(db.collection('Chats').doc(id).collection('Messages').orderBy('timestamp').onSnapshot(snap => {
-                    snap.forEach(d => msgs.set(d.id, d.data()));
-                    renderMsgs(msgs);
+                let query = db.collection('Chats').doc(id).collection('Messages').orderBy('timestamp');
+                if (lastTs > 0) {
+                    query = query.where('timestamp', '>', lastTs);
+                }
+
+                let isFirstSync = true;
+                window.unsub.push(query.onSnapshot(async snap => {
+                    let isNew = false;
+                    const newToCache = [];
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        data.chatId = id; 
+                        msgsMap.set(data.id, data);
+                        newToCache.push(data);
+                        isNew = true;
+                    });
+                    
+                    const c = document.getElementById('messagesContainer');
+                    const wasAtBottom = (c.scrollHeight - c.scrollTop - c.clientHeight) <= 100;
+
+                    if (newToCache.length > 0) await saveCachedMessages(newToCache);
+                    if (isNew || cachedMsgs.length === 0) {
+                        renderMsgs(msgsMap);
+                        
+                        if (isFirstSync || wasAtBottom) {
+                            setTimeout(() => scrollToBottom(isFirstSync ? 'auto' : 'smooth'), 50);
+                        } else if (!isFirstSync && isNew && !wasAtBottom) {
+                            document.getElementById('newMsgBadge').classList.remove('hidden');
+                            document.getElementById('scrollFab').classList.add('visible');
+                        }
+                    }
+                    
+                    if (isFirstSync) {
+                        isFirstSync = false;
+                        pendingSyncs--;
+                        if (pendingSyncs <= 0) {
+                            spinnerWrap.classList.remove('active');
+                            container.classList.remove('syncing');
+                        }
+                    }
+                }, err => {
+                    console.error("Sync error:", err);
+                    if (isFirstSync) {
+                        isFirstSync = false;
+                        pendingSyncs--;
+                        if (pendingSyncs <= 0) {
+                            spinnerWrap.classList.remove('active');
+                            container.classList.remove('syncing');
+                        }
+                    }
                 }));
             });
         }
 
-        // --- UPDATED RENDER MESSAGES (Date Groups for Sticky Header Fix) ---
         function renderMsgs(map) {
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
@@ -1842,232 +1643,229 @@
                 return;
             }
 
-            let lastDateStr = "";
-            let currentGroup = null;
+            let lastDateStr = ""; let currentGroup = null;
 
             currentMessages.forEach((m, index) => {
                 const date = new Date(m.timestamp * 1000);
                 const dateStr = date.toDateString();
 
-                // Start New Date Group if date changed
                 if(dateStr !== lastDateStr) {
-                    // Close previous group if exists
                     if(currentGroup) container.appendChild(currentGroup);
-                    
-                    // Create new group container
                     currentGroup = document.createElement('div');
                     currentGroup.className = 'chat-date-group';
-                    
-                    // Add Sticky Divider inside group
-                    const div = document.createElement('div');
-                    div.className = 'date-divider';
-                    div.innerText = formatDividerDate(m.timestamp);
+                    const div = document.createElement('div'); div.className = 'date-divider'; div.innerText = formatDividerDate(m.timestamp);
                     currentGroup.appendChild(div);
-                    
                     lastDateStr = dateStr;
                 }
 
-                // 2. GROUPING LOGIC (Using previous logic but appending to group)
                 const div = document.createElement('div');
                 div.className = `msg-bubble ${m.fromMe ? 'msg-out' : 'msg-in'}`;
                 
-                const nextMsg = currentMessages[index + 1];
-                const prevMsg = currentMessages[index - 1];
-                
+                const nextMsg = currentMessages[index + 1]; const prevMsg = currentMessages[index - 1];
                 const isSamePrev = (prevMsg && prevMsg.fromMe === m.fromMe && (!isCurrentChatGroup || prevMsg.senderName === m.senderName) && new Date(prevMsg.timestamp*1000).toDateString() === dateStr);
                 const isSameNext = (nextMsg && nextMsg.fromMe === m.fromMe && (!isCurrentChatGroup || nextMsg.senderName === m.senderName) && new Date(nextMsg.timestamp*1000).toDateString() === dateStr);
 
-                if (isSamePrev && isSameNext) div.classList.add('group-mid');
-                else if (isSamePrev) div.classList.add('group-bot');
-                else if (isSameNext) div.classList.add('group-top');
+                if (isSamePrev && isSameNext) div.classList.add('group-mid'); else if (isSamePrev) div.classList.add('group-bot'); else if (isSameNext) div.classList.add('group-top');
                 
                 const showSenderName = !m.fromMe && isCurrentChatGroup && m.senderName && m.senderName !== "Unknown" && !isSamePrev; 
-                
-                div.id = `msg-${m.timestamp}`;
-                div.dataset.date = dateStr;
+                div.id = `msg-${m.timestamp}`; div.dataset.date = dateStr;
 
-                div.innerHTML = `
-                    ${showSenderName ? `<div class="msg-sender">${m.senderName}</div>` : ''}
-                    <div>${m.text}</div>
-                    <div class="msg-meta">${date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                `;
-                
-                // Append message to current GROUP
+                // Regex to find URLs and wrap them in an anchor tag
+                const urlRegex = /(https?:\/\/[^\s]+)/g;
+                const formattedText = m.text ? m.text.replace(urlRegex, url => `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: var(--md-sys-color-primary); text-decoration: underline;">${url}</a>`) : '';
+
+                div.innerHTML = `${showSenderName ? `<div class="msg-sender">${m.senderName}</div>` : ''}<div>${formattedText || 'Media'}</div><div class="msg-meta">${date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>`;
                 if (currentGroup) currentGroup.appendChild(div);
             });
 
-            // Append the final group
             if(currentGroup) container.appendChild(currentGroup);
-            
-            // Force scroll to bottom on every update/load (now instant)
-            setTimeout(() => scrollToBottom('auto'), 50);
+            // Auto-scroll logic is now handled strictly in openChat based on user's scroll position
         }
 
-        // --- SCROLL TO BOTTOM ---
         function scrollToBottom(behavior = 'auto') {
             const c = document.getElementById('messagesContainer');
             c.scrollTo({ top: c.scrollHeight, behavior: behavior });
+            document.getElementById('newMsgBadge').classList.add('hidden');
         }
 
         // --- CALENDAR LOGIC ---
-        function openDateSearch() {
-            document.getElementById('chatMenu').classList.remove('show');
-            document.getElementById('calendarModal').classList.add('active');
-            renderCalendar(calCurrentDate);
-        }
+        function openDateSearch() { document.getElementById('chatMenu').classList.remove('show'); document.getElementById('calendarModal').classList.add('active'); renderCalendar(calCurrentDate); }
 
         function renderCalendar(date) {
-            const year = date.getFullYear();
-            const month = date.getMonth();
-            
-            // Header
+            const year = date.getFullYear(); const month = date.getMonth();
             document.getElementById('calMonthYear').innerText = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date);
-            
-            // Grid
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const grid = document.getElementById('calDatesGrid');
-            grid.innerHTML = '';
-
-            // Empty slots for prev month
-            for(let i=0; i<firstDay; i++) {
-                grid.innerHTML += `<div class="cal-date empty"></div>`;
-            }
-
-            // Days
+            const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const grid = document.getElementById('calDatesGrid'); grid.innerHTML = '';
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-date empty"></div>`;
             for(let d=1; d<=daysInMonth; d++) {
-                const dayEl = document.createElement('div');
-                dayEl.className = 'cal-date ripple-surface';
-                dayEl.innerText = d;
-                
-                // Check if selected
-                if(calSelectedDate && calSelectedDate.getDate() === d && calSelectedDate.getMonth() === month && calSelectedDate.getFullYear() === year) {
-                    dayEl.classList.add('active');
-                }
-                
-                dayEl.onclick = () => selectDate(new Date(year, month, d));
-                grid.appendChild(dayEl);
+                const dayEl = document.createElement('div'); dayEl.className = 'cal-date ripple-surface'; dayEl.innerText = d;
+                if(calSelectedDate && calSelectedDate.getDate() === d && calSelectedDate.getMonth() === month && calSelectedDate.getFullYear() === year) dayEl.classList.add('active');
+                dayEl.onclick = () => selectDate(new Date(year, month, d)); grid.appendChild(dayEl);
             }
         }
 
-        function changeCalMonth(delta) {
-            calCurrentDate.setMonth(calCurrentDate.getMonth() + delta);
-            renderCalendar(calCurrentDate);
-        }
-
-        function selectDate(date) {
-            calSelectedDate = date;
-            document.getElementById('calSelectedDateStr').innerText = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-            renderCalendar(calCurrentDate); // Re-render to show active state
-        }
+        function changeCalMonth(delta) { calCurrentDate.setMonth(calCurrentDate.getMonth() + delta); renderCalendar(calCurrentDate); }
+        function selectDate(date) { calSelectedDate = date; document.getElementById('calSelectedDateStr').innerText = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); renderCalendar(calCurrentDate); }
 
         function jumpToDate() {
-            if(!currentMessages.length) {
-                closeModal('calendarModal');
-                return;
-            }
-            
-            // Find first message >= selected date
-            // Set time to 00:00:00 for comparison
+            if(!currentMessages.length) { closeModal('calendarModal'); return; }
             const targetTs = calSelectedDate.setHours(0,0,0,0) / 1000;
-            const targetDateStr = calSelectedDate.toDateString();
-
-            // Try to find exact match or next closest
             const msg = currentMessages.find(m => m.timestamp >= targetTs);
-            
             closeModal('calendarModal');
-
             if(msg) {
                 const el = document.getElementById(`msg-${msg.timestamp}`);
-                if(el) {
-                    el.scrollIntoView({behavior: 'smooth', block: 'center'});
-                    el.style.backgroundColor = 'var(--search-highlight)'; // Flash highlight
-                    setTimeout(() => el.style.backgroundColor = '', 2000);
-                }
-            } else {
-                document.getElementById('notFoundModal').classList.add('active');
-            }
+                if(el) { el.scrollIntoView({behavior: 'smooth', block: 'center'}); el.style.backgroundColor = 'var(--search-highlight)'; setTimeout(() => el.style.backgroundColor = '', 2000); }
+            } else document.getElementById('notFoundModal').classList.add('active');
         }
 
-        function handleLogout() {
-            localStorage.removeItem('wp_auth_expiry');
-            localStorage.removeItem('wp_app_pin');
-            localStorage.removeItem('wp_app_bio');
-            location.reload();
-        }
-        
-        function closeChatMobile() {
-            window.history.back();
-        }
-        
-        window.addEventListener('popstate', () => {
-            document.getElementById('chatArea').classList.remove('remove');
-            document.getElementById('chatArea').classList.remove('active');
-        });
+        function handleLogout() { localStorage.removeItem('wp_auth_expiry'); localStorage.removeItem('wp_app_pin'); localStorage.removeItem('wp_app_bio'); location.reload(); }
+        function closeChatMobile() { window.history.back(); }
+        window.addEventListener('popstate', () => { document.getElementById('chatArea').classList.remove('remove'); document.getElementById('chatArea').classList.remove('active'); });
         
         function downloadChat() {
             if(!currentMessages.length) return;
             const text = currentMessages.map(m => `[${new Date(m.timestamp*1000).toLocaleString()}] ${m.senderName}: ${m.text}`).join('\n');
             const blob = new Blob([text], {type:'text/plain'});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'chat.txt';
-            a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'chat.txt'; a.click();
         }
         
-        function showRenameModal() {
-            if(!activeChatId) return;
-            document.getElementById('renameModal').classList.add('active');
-            document.getElementById('renameInput').value = document.getElementById('headerName').innerText;
-            document.getElementById('chatMenu').classList.remove('show');
-        }
-        
-        async function saveRename() {
-            const name = document.getElementById('renameInput').value;
-            if(name) {
-                await db.collection('Chats').doc(activeChatId).set({customName: name}, {merge:true});
-                document.getElementById('headerName').innerText = name;
-                closeModal('renameModal');
-                loadChats();
-            }
-        }
-        
-        function showLogoutModal() {
-            document.getElementById('logoutModal').classList.add('active');
-        }
+        function showRenameModal() { if(!activeChatId) return; document.getElementById('renameModal').classList.add('active'); document.getElementById('renameInput').value = document.getElementById('headerName').innerText; document.getElementById('chatMenu').classList.remove('show'); }
+        async function saveRename() { const name = document.getElementById('renameInput').value; if(name) { await db.collection('Chats').doc(activeChatId).set({customName: name}, {merge:true}); document.getElementById('headerName').innerText = name; closeModal('renameModal'); loadChats(); } }
+        function showLogoutModal() { document.getElementById('logoutModal').classList.add('active'); }
 
         document.getElementById('searchInput').addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase();
-            document.querySelectorAll('.contact-item').forEach(el => {
-                const name = el.innerText.toLowerCase();
-                el.style.display = name.includes(val) ? 'flex' : 'none';
-            });
+            document.querySelectorAll('.contact-item').forEach(el => { el.style.display = el.innerText.toLowerCase().includes(val) ? 'flex' : 'none'; });
         });
 
-        function promptAddChat() {
-            const id = prompt("Enter WhatsApp ID (e.g. 12345@s.whatsapp.net)");
-            if(id) {
-                db.collection('Chats').doc(id).set({displayName:'Manual Add', id:id, lastActive: Math.floor(Date.now()/1000)}, {merge:true});
-                setTimeout(loadChats, 1000);
+        function refreshApp() {
+            document.getElementById('refreshAuthStep').classList.remove('hidden');
+            document.getElementById('refreshProgressStep').classList.add('hidden');
+            document.getElementById('refreshUsername').value = '';
+            document.getElementById('refreshPassword').value = '';
+            document.getElementById('refreshError').style.display = 'none';
+            document.getElementById('refreshModal').classList.add('active');
+        }
+
+        async function startHardRefresh() {
+            const btn = document.getElementById('refreshBtn'); const err = document.getElementById('refreshError');
+            const u = document.getElementById('refreshUsername').value; const p = document.getElementById('refreshPassword').value;
+
+            btn.classList.add('loading'); btn.disabled = true; err.style.display = 'none';
+
+            try {
+                const response = await fetch(`${RENDER_BACKEND_URL}/api/verify`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username: u, password: p })
+                });
+                const data = await response.json();
+
+                if (!data.success) throw new Error();
+
+                document.getElementById('refreshAuthStep').classList.add('hidden');
+                document.getElementById('refreshProgressStep').classList.remove('hidden');
+                
+                await executeHardRefresh();
+
+            } catch (e) {
+                err.style.display = 'block';
+                btn.classList.remove('loading'); btn.disabled = false;
             }
         }
 
-        async function refreshApp() {
-            const btn = document.querySelector('.icon-btn span[class*="refresh"]');
-            if(btn) btn.style.animation = 'spin 1s infinite linear';
-            if ('caches' in window) {
-                try {
-                    const keys = await caches.keys();
-                    await Promise.all(keys.map(key => caches.delete(key)));
-                } catch(e) { console.log("Cache clear error", e); }
+        function updateRefreshProgress(percent, text) {
+            document.getElementById('refreshProgressBar').style.width = `${percent}%`;
+            document.getElementById('refreshPercentText').innerText = `${Math.floor(percent)}%`;
+            document.getElementById('refreshStatusText').innerText = text;
+        }
+
+        async function executeHardRefresh() {
+            try {
+                updateRefreshProgress(5, "Clearing caches...");
+                if ('caches' in window) { try { const keys = await caches.keys(); await Promise.all(keys.map(key => caches.delete(key))); } catch(e) {} }
+                if ('serviceWorker' in navigator) { const regs = await navigator.serviceWorker.getRegistrations(); for (let r of regs) await r.unregister(); }
+                
+                updateRefreshProgress(10, "Clearing local storage...");
+                const theme = localStorage.getItem('theme');
+                const bg = localStorage.getItem('chatBg');
+                localStorage.clear();
+                if(theme) localStorage.setItem('theme', theme);
+                if(bg) localStorage.setItem('chatBg', bg);
+
+                updateRefreshProgress(15, "Wiping database...");
+                if(dbInstance) { dbInstance.close(); dbInstance = null; }
+                await new Promise(res => { const req = indexedDB.deleteDatabase(DB_NAME); req.onsuccess = res; req.onerror = res; req.onblocked = res; });
+                
+                updateRefreshProgress(25, "Rebuilding database...");
+                isIdbSupported = true;
+                await initIndexedDB();
+
+                updateRefreshProgress(30, "Fetching chat list...");
+                const snap = await db.collection('Chats').get();
+                const groups = {};
+                const excluded = ['917278779512@s.whatsapp.net', '201554426618024@lid'];
+
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    if (!d.lastActive || excluded.includes(doc.id)) return;
+                    const phone = d.phoneNumber || doc.id.split('@')[0];
+                    if (!groups[phone]) groups[phone] = { main: {id:doc.id, ...d}, ids: [doc.id] };
+                    else {
+                        groups[phone].ids.push(doc.id);
+                        if (d.lastActive > groups[phone].main.lastActive) groups[phone].main = {id:doc.id, ...d};
+                    }
+                });
+
+                const chats = Object.values(groups).map(g => ({...g.main, ids: g.ids})).sort((a,b) => b.lastActive - a.lastActive);
+                await saveCachedChats(chats);
+
+                const total = chats.length;
+                let done = 0;
+
+                for (const chat of chats) {
+                    const name = chat.customName || chat.displayName || chat.phoneNumber || chat.id;
+                    updateRefreshProgress(30 + ((done / total) * 60), `Fetching: ${name}...`);
+                    
+                    for (const id of chat.ids) {
+                        const msgSnap = await db.collection('Chats').doc(id).collection('Messages').get();
+                        const msgs = [];
+                        msgSnap.forEach(doc => {
+                            const data = doc.data(); data.chatId = id; msgs.push(data);
+                        });
+                        if (msgs.length > 0) await saveCachedMessages(msgs);
+                    }
+                    done++;
+                }
+
+                updateRefreshProgress(100, "Sync complete! Restarting...");
+                setTimeout(() => window.location.reload(), 1000);
+
+            } catch (e) {
+                console.error("Hard refresh error", e);
+                updateRefreshProgress(100, "Error during sync. Reloading...");
+                setTimeout(() => window.location.reload(), 2000);
             }
-            if ('serviceWorker' in navigator) {
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                for (let registration of registrations) {
-                    await registration.unregister();
+        }
+        // Function to accurately measure total LocalStorage space occupied
+        function calculateLocalStorageUsage() {
+            let totalBytes = 0;
+            for (let key in localStorage) {
+                if (!localStorage.hasOwnProperty(key)) continue;
+                // Key length + string content value length multiplied by 2 bytes (UTF-16 characters standard layout size)
+                totalBytes += ((key.length + localStorage[key].length) * 2);
+            }
+            
+            // Format into human readable metric layout outputs
+            const sizeInKB = (totalBytes / 1024).toFixed(2);
+            const displayElement = document.getElementById('localStorageSizeDisplay');
+            
+            if (displayElement) {
+                if (sizeInKB >= 1024) {
+                    displayElement.innerText = `${(sizeInKB / 1024).toFixed(2)} MB occupied`;
+                } else {
+                    displayElement.innerText = `${sizeInKB} KB occupied`;
                 }
             }
-            window.location.reload();
         }
     </script>
 </body>
