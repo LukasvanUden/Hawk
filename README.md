@@ -2,20 +2,14 @@
 
 A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (including deleted ones) via a linked device connection and stores them in your own Firebase Firestore database.
 
-> [!IMPORTANT]
-> **This repository will be upgraded shortly.** The following new features and changes are coming:
-> - **LocalStorage integration** — reducing database pressure by caching data locally
-> - **Offline mode** — view your previous chats without an internet connection
-> - **UI improvements** — various user interface changes and enhancements
-
 ### Check <a href="https://amit.is-a.dev/logger">guide</a> for detailed installation process.
 <a href="https://www.producthunt.com/products/whatsapp-logger-self-hosted?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-whatsapp-logger-self-hosted" target="_blank" rel="noopener noreferrer"><img alt="WhatsApp Logger (Self-Hosted) - Privacy-focused WhatsApp archiving with Anti-Delete. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1122776&amp;theme=light&amp;t=1776172043162"></a>
 
 ### Important notes:
- * It is recommended to download the **web app** after the publication of webpage for better security. 
- * It is recommended to use **PIN** or **Biometric authentication** inside web app. Find the authentication options in Settings
+ * It is recommended to download the **web app (PWA)** after the publication of the webpage for better security and native experience. 
+ * It is recommended to use **PIN** or **Biometric authentication** inside the web app. Find the authentication options in Settings.
 
-## 🚀 Features
+## Features
 
 * **Anti-Delete**: Logs messages instantly, preserving them even if the sender deletes them.
 * **Privacy First**: You host the backend and database. No third-party servers access your data.
@@ -23,10 +17,11 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 * **Media Support**: Captures text messages (Images/Media support depends on Baileys implementation, primarily text-focused).
 * **Search & Filter**: Search by content or filter by date.
 * **Export**: Export chat logs to `.txt` files.
+* **Offline Ready**: Uses IndexedDB caching so you can read your logs even without an internet connection.
 
 ---
 
-## 🛠️ Prerequisities
+## Prerequisites
 
 1.  A **GitHub** Account.
 2.  A **Render** Account (Free tier works).
@@ -36,7 +31,7 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 
 ---
 
-##  step 1: Firebase Setup (The Database)
+## Step 1: Firebase Setup (The Database)
 
 1.  Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
 2.  **Create Database**:
@@ -48,24 +43,24 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
     * Go to the **Rules** tab in Firestore.
     * Replace the rules with the following (allows anyone to read, but only backend with Admin SDK can write):
         ```javascript
-         rules_version = '2';
-         service cloud.firestore {
-           match /databases/{database}/documents {
-             match /{document=**} {
-               // 1. Allow Read: Essential for your HTML page to fetch chats.
-               allow read: if true;
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            match /{document=**} {
+              // 1. Allow Read: Essential for your HTML page to fetch chats.
+              allow read: if true;
          
-               // 2. Allow Update: Enables the "Rename Chat" feature from the frontend.
-               // This allows updating existing documents (like changing the name)
-               // but prevents creating NEW documents or Deleting them.
-               allow update: if true;
+              // 2. Allow Update: Enables the "Rename Chat" feature from the frontend.
+              // This allows updating existing documents (like changing the name)
+              // but prevents creating NEW documents or Deleting them.
+              allow update: if true;
          
-               // 3. Block Create/Delete: Only the Backend (Render) can create new messages
-               // or delete them. This prevents random people from injecting fake chats.
-               allow create, delete: if false;
-             }
-           }
-         }
+              // 3. Block Create/Delete: Only the Backend (Render) can create new messages
+              // or delete them. This prevents random people from injecting fake chats.
+              allow create, delete: if false;
+            }
+          }
+        }
         ```
 4.  **Get Backend Credentials (Service Account)**:
     * Go to **Project Settings** (Gear icon) -> **Service accounts**.
@@ -143,7 +138,7 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 
 ## Step 5: Usage
 
-1.  Navigate to your hosted frontend URL (e.g., `https://amit.is-a.dev/wp-chat`).
+1.  Navigate to your hosted frontend URL.
 2.  You will see a Login Screen.
 3.  Enter the same `AUTH_USER` and `AUTH_PASS` you configured on Render.
 4.  Once unlocked, your chats will load from Firebase.
