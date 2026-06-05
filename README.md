@@ -8,7 +8,6 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 > * **100% Passive (Read-Only):** WhatsApp bans accounts for *sending* spam, bulk messages, or unauthorized automated replies. This logger does not send messages; it acts strictly as a passive listener, which does not trigger WhatsApp's anti-spam algorithms.
 > * **Standard Linked Device:** The tool connects to WhatsApp using the official Multi-Device WebSocket protocol. To WhatsApp's servers, this connection looks exactly like you logging into standard WhatsApp Web on a secondary browser. 
 > * **No User Reports:** The number one cause of bans is other users reporting an account. Since this logger works silently in the background and does not interact with anyone, there is zero risk of being reported.
-> * 
 
 ### Check <a href="https://amit.is-a.dev/logger">guide</a> for detailed installation process.
 <a href="https://www.producthunt.com/products/whatsapp-logger-self-hosted?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-whatsapp-logger-self-hosted" target="_blank" rel="noopener noreferrer"><img alt="WhatsApp Logger (Self-Hosted) - Privacy-focused WhatsApp archiving with Anti-Delete. | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1122776&amp;theme=light&amp;t=1776172043162"></a>
