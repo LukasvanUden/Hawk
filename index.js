@@ -17,6 +17,15 @@ const PORT = process.env.PORT || 3000;
 const AUTH_USER = process.env.AUTH_USER;
 const AUTH_PASS = process.env.AUTH_PASS;
 
+// Per-account namespace: lets one Firebase project hold several phones side by side.
+// - Leave ACCOUNT_ID unset for the original phone (keeps existing 'Chats'/'whatsapp_auth').
+// - Set ACCOUNT_ID (e.g. "phone2") for an additional phone → its data + session live
+//   under their own prefixed collections, fully separate from the first account.
+const ACCOUNT_ID = (process.env.ACCOUNT_ID || '').trim();
+const CHATS_COLLECTION = ACCOUNT_ID ? `${ACCOUNT_ID}_Chats` : 'Chats';
+const AUTH_COLLECTION = ACCOUNT_ID ? `${ACCOUNT_ID}_auth` : 'whatsapp_auth';
+console.log(`System: Account namespace = "${ACCOUNT_ID || '(default)'}" → data collection "${CHATS_COLLECTION}"`);
+
 // Initialize Express
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -41,6 +50,22 @@ try {
 }
 
 const db = admin.firestore();
+
+// Tracks groups whose name we've already resolved this session (avoids refetching)
+const resolvedGroups = new Set();
+
+// Fetch a group's subject (its real name) and store it as the chat's display name
+async function syncGroupName(jid) {
+    try {
+        if (!sock) return;
+        const meta = await sock.groupMetadata(jid);
+        if (meta && meta.subject) {
+            await db.collection(CHATS_COLLECTION).doc(jid).set({ displayName: meta.subject }, { merge: true });
+        }
+    } catch (err) {
+        // Group metadata not available (e.g. we left the group) — ignore quietly
+    }
+}
 
 // --- FIRESTORE AUTH ADAPTER FOR BAILEYS ---
 async function useFirestoreAuthState(db, collectionName = 'whatsapp_auth') {
@@ -130,7 +155,7 @@ async function startWhatsApp() {
     const logger = pino({ level: 'silent' });
     
     // Use our custom Firestore Auth adapter instead of useMultiFileAuthState
-    const { state, saveCreds, clearState } = await useFirestoreAuthState(db, 'whatsapp_auth');
+    const { state, saveCreds, clearState } = await useFirestoreAuthState(db, AUTH_COLLECTION);
     const { version } = await fetchLatestBaileysVersion();
 
     console.log("System: Connecting to WhatsApp servers...");
@@ -173,6 +198,30 @@ async function startWhatsApp() {
             console.log("System: Connection Open and Authenticated. Firebase Auth Sync Active.");
             qrCodeData = null;
             isConnected = true;
+
+            // Backfill all group names (subjects) once we're connected
+            try {
+                const groups = await sock.groupFetchAllParticipating();
+                for (const jid in groups) {
+                    const subject = groups[jid]?.subject;
+                    if (subject) {
+                        await db.collection(CHATS_COLLECTION).doc(jid).set({ displayName: subject }, { merge: true });
+                        resolvedGroups.add(jid);
+                    }
+                }
+                console.log(`System: Synced names for ${Object.keys(groups).length} group(s).`);
+            } catch (err) {
+                console.log("System: Could not fetch group names:", err.message);
+            }
+        }
+    });
+
+    // Keep group names up to date when a group is renamed
+    sock.ev.on('groups.update', async (updates) => {
+        for (const g of updates) {
+            if (g.id && g.subject) {
+                await db.collection(CHATS_COLLECTION).doc(g.id).set({ displayName: g.subject }, { merge: true });
+            }
         }
     });
 
@@ -197,11 +246,11 @@ async function startWhatsApp() {
 
             if (primaryId && Object.keys(updateData).length > 0) {
                 try {
-                    await db.collection('Chats').doc(primaryId).set(updateData, { merge: true });
+                    await db.collection(CHATS_COLLECTION).doc(primaryId).set(updateData, { merge: true });
                     
                     // Keep the fallback JID document synced as well if we routed via LID
                     if (contact.lid && contact.id !== contact.lid) {
-                        await db.collection('Chats').doc(contact.id).set(updateData, { merge: true });
+                        await db.collection(CHATS_COLLECTION).doc(contact.id).set(updateData, { merge: true });
                     }
                 } catch (err) {
                     // Silent fail to keep logs clean
@@ -236,14 +285,26 @@ async function startWhatsApp() {
                 const isFromMe = msg.key.fromMe || false;
                 const senderName = isFromMe ? "Me" : (msg.pushName || "Unknown");
 
-                // 1. Ensure Chat Document Exists
-                await db.collection('Chats').doc(remoteJid).set({
-                    lastActive: timestamp,
-                    id: remoteJid
-                }, { merge: true });
+                // 1. Ensure Chat Document Exists (+ capture a human-readable name)
+                const isGroupChat = remoteJid.endsWith('@g.us');
+                const chatMeta = { lastActive: timestamp, id: remoteJid };
+
+                // For 1-on-1 chats, the sender's WhatsApp name (pushName) is the most
+                // reliable label we get — especially for privacy-hidden @lid contacts.
+                if (!isFromMe && !isGroupChat && msg.pushName) {
+                    chatMeta.pushName = msg.pushName;
+                }
+
+                await db.collection(CHATS_COLLECTION).doc(remoteJid).set(chatMeta, { merge: true });
+
+                // Resolve a group's real name (subject) once per session
+                if (isGroupChat && !resolvedGroups.has(remoteJid)) {
+                    resolvedGroups.add(remoteJid);
+                    syncGroupName(remoteJid);
+                }
 
                 // 2. Save Message
-                await db.collection('Chats')
+                await db.collection(CHATS_COLLECTION)
                     .doc(remoteJid)
                     .collection('Messages')
                     .doc(msg.key.id)
