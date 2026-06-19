@@ -165,7 +165,7 @@ async function startWhatsApp() {
         logger,
         printQRInTerminal: true,
         auth: state,
-        browser: ["dein iPhone", "macOS", "1.0.0"],
+        browser: ["iPhone", "Safari", "1.0.0"],
         syncFullHistory: true 
     });
 
