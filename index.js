@@ -483,3 +483,23 @@ app.listen(PORT, () => {
     startWhatsApp();
     console.log(`Server running on port ${PORT}`);
 });
+
+// --- KEEP-ALIVE (Render free tier) ---
+// Render spins a free service down after 15 min without INBOUND traffic, which
+// would drop the WhatsApp connection. We ping our own public URL every 5 minutes
+// so there is always recent inbound traffic and the service never goes idle.
+// RENDER_EXTERNAL_URL is injected automatically by Render (absent locally, so this
+// is a harmless no-op on your Mac).
+const SELF_URL = process.env.RENDER_EXTERNAL_URL;
+if (SELF_URL) {
+    const PING_INTERVAL_MS = 5 * 60 * 1000; // 5 min — comfortably under the 15 min idle limit
+    setInterval(async () => {
+        try {
+            await fetch(`${SELF_URL}/ping`);
+            console.log("System: Keep-alive ping OK");
+        } catch (err) {
+            console.log("System: Keep-alive ping failed:", err.message);
+        }
+    }, PING_INTERVAL_MS);
+    console.log(`System: Keep-alive self-ping active every 5 min -> ${SELF_URL}/ping`);
+}
