@@ -236,9 +236,13 @@ async function startWhatsApp() {
             
             if (displayName) updateData.displayName = displayName;
 
-            // Extract standard phone number from standard JID
+            // Extract the real phone number when available.
             if (contact.id && contact.id.endsWith('@s.whatsapp.net')) {
                 updateData.phoneNumber = contact.id.split('@')[0];
+            } else if (contact.jid && contact.jid.endsWith('@s.whatsapp.net')) {
+                // In Baileys 6.7.23 a LID-primary contact carries its real number
+                // here (the field is `jid`, not `phoneNumber`). The old code missed this.
+                updateData.phoneNumber = contact.jid.split('@')[0];
             }
 
             // Sync using LID or ID
@@ -255,6 +259,19 @@ async function startWhatsApp() {
                 } catch (err) {
                     // Silent fail to keep logs clean
                 }
+            }
+        }
+    });
+
+    // Direct LID -> phone-number pair — fires when a peer actively shares its number.
+    sock.ev.on('chats.phoneNumberShare', async ({ lid, jid }) => {
+        if (!jid || !jid.endsWith('@s.whatsapp.net')) return;
+        const phoneNumber = jid.split('@')[0];
+        for (const target of [lid, jid].filter(Boolean)) {
+            try {
+                await db.collection(CHATS_COLLECTION).doc(target).set({ phoneNumber }, { merge: true });
+            } catch (err) {
+                // ignore
             }
         }
     });
@@ -293,6 +310,13 @@ async function startWhatsApp() {
                 // reliable label we get — especially for privacy-hidden @lid contacts.
                 if (!isFromMe && !isGroupChat && msg.pushName) {
                     chatMeta.pushName = msg.pushName;
+                }
+
+                // Best-effort phone number: WhatsApp sometimes passes the real number
+                // inline on the message key (sender_pn). It's frequently absent for
+                // privacy-hidden @lid contacts, so always treat it as optional.
+                if (!isFromMe && !isGroupChat && msg.key.senderPn && msg.key.senderPn.endsWith('@s.whatsapp.net')) {
+                    chatMeta.phoneNumber = msg.key.senderPn.split('@')[0];
                 }
 
                 await db.collection(CHATS_COLLECTION).doc(remoteJid).set(chatMeta, { merge: true });
