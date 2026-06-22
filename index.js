@@ -4,6 +4,7 @@ const {
     fetchLatestBaileysVersion,
     BufferJSON,
     initAuthCreds,
+    downloadMediaMessage,
     proto
 } = require('@whiskeysockets/baileys');
 const express = require('express');
@@ -50,6 +51,16 @@ try {
 }
 
 const db = admin.firestore();
+
+// Firebase Storage bucket for media (voice notes / audio). Override via env if needed.
+const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || `${serviceAccount.project_id}.firebasestorage.app`;
+console.log(`System: Storage bucket = "${STORAGE_BUCKET}"`);
+
+// Format a duration in seconds as m:ss (e.g. 312 -> "5:12")
+function formatDuration(totalSeconds) {
+    const s = Math.max(0, Math.floor(totalSeconds || 0));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
 
 // Tracks groups whose name we've already resolved this session (avoids refetching)
 const resolvedGroups = new Set();
@@ -286,14 +297,23 @@ async function startWhatsApp() {
                 const remoteJid = msg.key.remoteJid;
                 if (remoteJid === 'status@broadcast') continue;
 
-                const textContent = 
-                    msg.message.conversation || 
-                    msg.message.extendedTextMessage?.text || 
-                    msg.message.imageMessage?.caption || 
-                    msg.message.videoMessage?.caption || 
+                // Voice notes / audio arrive as audioMessage (sometimes wrapped in ephemeral/view-once)
+                const audioMessage =
+                    msg.message.audioMessage ||
+                    msg.message.ephemeralMessage?.message?.audioMessage ||
+                    msg.message.viewOnceMessage?.message?.audioMessage ||
+                    msg.message.viewOnceMessageV2?.message?.audioMessage ||
+                    null;
+
+                let textContent =
+                    msg.message.conversation ||
+                    msg.message.extendedTextMessage?.text ||
+                    msg.message.imageMessage?.caption ||
+                    msg.message.videoMessage?.caption ||
                     "";
 
-                if (!textContent) continue;
+                // Keep only what we archive: text OR voice/audio. Skip everything else.
+                if (!textContent && !audioMessage) continue;
 
                 const timestamp = msg.messageTimestamp 
                     ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : msg.messageTimestamp.low) 
@@ -327,19 +347,58 @@ async function startWhatsApp() {
                     syncGroupName(remoteJid);
                 }
 
-                // 2. Save Message
+                // 2. Save Message (for voice notes: download audio -> Storage, keep a reference here)
+                const messageData = {
+                    text: textContent,
+                    senderId: remoteJid,
+                    senderName: senderName,
+                    timestamp: timestamp,
+                    fromMe: isFromMe,
+                    id: msg.key.id
+                };
+
+                if (audioMessage) {
+                    const isPtt = audioMessage.ptt === true;
+                    messageData.mediaType = 'audio';
+                    messageData.isVoiceNote = isPtt;
+                    messageData.durationSeconds = audioMessage.seconds || 0;
+                    messageData.mimetype = audioMessage.mimetype || 'audio/ogg';
+                    // Label so the message stays meaningful in the viewer even if the upload fails
+                    if (!messageData.text) {
+                        messageData.text = `🎤 ${isPtt ? 'Sprachnachricht' : 'Audio'} (${formatDuration(audioMessage.seconds)})`;
+                    }
+
+                    try {
+                        const buffer = await downloadMediaMessage(
+                            msg,
+                            'buffer',
+                            {},
+                            { logger, reuploadRequest: sock.updateMediaMessage }
+                        );
+                        const ext = (audioMessage.mimetype || '').includes('mp4') ? 'm4a' : 'ogg';
+                        const storagePath = `voice-notes/${ACCOUNT_ID || 'default'}/${remoteJid}/${msg.key.id}.${ext}`;
+                        await admin.storage().bucket(STORAGE_BUCKET).file(storagePath).save(buffer, {
+                            resumable: false,
+                            metadata: {
+                                contentType: messageData.mimetype,
+                                metadata: { chat: remoteJid, messageId: msg.key.id }
+                            }
+                        });
+                        messageData.storageBucket = STORAGE_BUCKET;
+                        messageData.storagePath = storagePath;
+                        messageData.fileSize = buffer.length;
+                        console.log(`System: Saved voice note -> ${storagePath} (${buffer.length} bytes)`);
+                    } catch (audioErr) {
+                        messageData.audioError = true;
+                        console.log(`System: Voice note download/upload failed (${msg.key.id}): ${audioErr.message}`);
+                    }
+                }
+
                 await db.collection(CHATS_COLLECTION)
                     .doc(remoteJid)
                     .collection('Messages')
                     .doc(msg.key.id)
-                    .set({
-                        text: textContent,
-                        senderId: remoteJid,
-                        senderName: senderName,
-                        timestamp: timestamp,
-                        fromMe: isFromMe,
-                        id: msg.key.id
-                    }, { merge: true });
+                    .set(messageData, { merge: true });
 
             } catch (err) {
                 // Silent error handling
