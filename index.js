@@ -12,11 +12,19 @@ const QRCode = require('qrcode');
 const pino = require('pino');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+const path = require('path');
+const { registerMessageArchiveHandlers } = require('./message-events');
 
 // --- CONFIGURATION ---
 const PORT = process.env.PORT || 3000;
 const AUTH_USER = process.env.AUTH_USER;
 const AUTH_PASS = process.env.AUTH_PASS;
+const APP_HTML_PATH = path.join(__dirname, 'index.html');
+const ASSET_PATHS = {
+    '/assets/icon.svg': path.join(__dirname, 'icon.svg'),
+    '/assets/manifest-wpChat.json': path.join(__dirname, 'manifest.json'),
+    '/assets/sw-wpChat.js': path.join(__dirname, 'sw.js')
+};
 
 // Per-account namespace: lets one Firebase project hold several phones side by side.
 // - Leave ACCOUNT_ID unset for the original phone (keeps existing 'Chats'/'whatsapp_auth').
@@ -158,29 +166,73 @@ async function useFirestoreAuthState(db, collectionName = 'whatsapp_auth') {
 }
 
 // --- BAILEYS SETUP ---
-let qrCodeData = null; 
+let qrCodeData = null;
 let sock = null;
-let isConnected = false; 
+let isConnected = false;
+let isConnecting = false;
+let reconnectTimer = null;
+let reconnectAttempt = 0;
+
+function describeDisconnect(error) {
+    const statusCode = error?.output?.statusCode ?? error?.statusCode;
+    return {
+        statusCode: statusCode ?? 'unknown',
+        reason: DisconnectReason[statusCode] || 'unknown',
+        message: error?.output?.payload?.message || error?.message || 'No error details',
+        uptimeSeconds: Math.round(process.uptime())
+    };
+}
+
+function scheduleReconnect(delayMs = Math.min(5000 * (2 ** reconnectAttempt), 60000)) {
+    if (reconnectTimer) {
+        console.log("System: Reconnect already scheduled; ignoring duplicate close event.");
+        return;
+    }
+
+    reconnectAttempt++;
+    console.log(`System: Reconnecting in ${delayMs / 1000}s (attempt ${reconnectAttempt})...`);
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        startWhatsApp();
+    }, delayMs);
+}
 
 async function startWhatsApp() {
-    const logger = pino({ level: 'silent' });
-    
-    // Use our custom Firestore Auth adapter instead of useMultiFileAuthState
-    const { state, saveCreds, clearState } = await useFirestoreAuthState(db, AUTH_COLLECTION);
-    const { version } = await fetchLatestBaileysVersion();
+    if (isConnecting) {
+        console.log("System: Connection attempt already running; skipping duplicate start.");
+        return;
+    }
 
-    console.log("System: Connecting to WhatsApp servers...");
+    isConnecting = true;
+    const logger = pino({ level: 'warn' });
+    let currentSocket;
 
-    sock = makeWASocket({
-        version,
-        logger,
-        printQRInTerminal: true,
-        auth: state,
-        browser: ["iPhone", "Safari", "1.0.0"],
-        syncFullHistory: true 
-    });
+    try {
+        // Use our custom Firestore Auth adapter instead of useMultiFileAuthState
+        const { state, saveCreds, clearState } = await useFirestoreAuthState(db, AUTH_COLLECTION);
+        const { version } = await fetchLatestBaileysVersion();
 
-    sock.ev.on('connection.update', async (update) => {
+        console.log(`System: Connecting to WhatsApp servers (Baileys ${version.join('.')})...`);
+
+        currentSocket = makeWASocket({
+            version,
+            logger,
+            auth: state,
+            browser: ["iPhone", "Safari", "1.0.0"],
+            connectTimeoutMs: 60000,
+            keepAliveIntervalMs: 30000,
+            syncFullHistory: true
+        });
+        sock = currentSocket;
+    } catch (err) {
+        console.error(`System: WhatsApp connection setup failed ${JSON.stringify(describeDisconnect(err))}`);
+        scheduleReconnect();
+        return;
+    } finally {
+        isConnecting = false;
+    }
+
+    currentSocket.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
@@ -190,25 +242,34 @@ async function startWhatsApp() {
         }
 
         if (connection === 'close') {
+            if (sock !== currentSocket) {
+                console.log("System: Ignoring close event from an outdated socket.");
+                return;
+            }
+
+            sock = null;
             isConnected = false;
-            const statusCode = lastDisconnect?.error?.output?.statusCode;
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            const details = describeDisconnect(lastDisconnect?.error);
+            console.log(`System: WhatsApp connection closed ${JSON.stringify(details)}`);
 
-            console.log(`System: Connection closed (Status: ${statusCode})`);
-
-            if (shouldReconnect) {
-                console.log("System: Reconnecting in 5 seconds...");
-                setTimeout(startWhatsApp, 5000);
-            } else {
+            if (details.statusCode === DisconnectReason.loggedOut) {
                 console.log("System: Device Logged Out. Wiping session from Firestore.");
                 await clearState();
                 qrCodeData = null;
-                startWhatsApp(); // Restart to grab a fresh QR code
+                reconnectAttempt = 0;
+                scheduleReconnect(0); // Restart to grab a fresh QR code
+            } else {
+                scheduleReconnect(details.statusCode === DisconnectReason.restartRequired ? 0 : undefined);
             }
         } else if (connection === 'open') {
             console.log("System: Connection Open and Authenticated. Firebase Auth Sync Active.");
             qrCodeData = null;
             isConnected = true;
+            reconnectAttempt = 0;
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
 
             // Backfill all group names (subjects) once we're connected
             try {
@@ -228,7 +289,7 @@ async function startWhatsApp() {
     });
 
     // Keep group names up to date when a group is renamed
-    sock.ev.on('groups.update', async (updates) => {
+    currentSocket.ev.on('groups.update', async (updates) => {
         for (const g of updates) {
             if (g.id && g.subject) {
                 await db.collection(CHATS_COLLECTION).doc(g.id).set({ displayName: g.subject }, { merge: true });
@@ -237,10 +298,10 @@ async function startWhatsApp() {
     });
 
     // Write updated credentials back to Firestore whenever keys change
-    sock.ev.on('creds.update', saveCreds);
+    currentSocket.ev.on('creds.update', saveCreds);
 
     // --- FEATURE: REAL NUMBER SYNC ---
-    sock.ev.on('contacts.upsert', async (contacts) => {
+    currentSocket.ev.on('contacts.upsert', async (contacts) => {
         for (const contact of contacts) {
             let updateData = {};
             const displayName = contact.name || contact.notify;
@@ -275,7 +336,7 @@ async function startWhatsApp() {
     });
 
     // Direct LID -> phone-number pair — fires when a peer actively shares its number.
-    sock.ev.on('chats.phoneNumberShare', async ({ lid, jid }) => {
+    currentSocket.ev.on('chats.phoneNumberShare', async ({ lid, jid }) => {
         if (!jid || !jid.endsWith('@s.whatsapp.net')) return;
         const phoneNumber = jid.split('@')[0];
         for (const target of [lid, jid].filter(Boolean)) {
@@ -287,15 +348,28 @@ async function startWhatsApp() {
         }
     });
 
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        if (type !== 'notify' && type !== 'append') return;
+    async function archiveMessages(messages, context = {}) {
+        const stats = {
+            total: messages.length,
+            saved: 0,
+            skippedNoMessage: 0,
+            skippedStatus: 0,
+            skippedUnsupported: 0,
+            failed: 0
+        };
 
         for (const msg of messages) {
             try {
-                if (!msg.message) continue;
+                if (!msg.message) {
+                    stats.skippedNoMessage++;
+                    continue;
+                }
 
                 const remoteJid = msg.key.remoteJid;
-                if (remoteJid === 'status@broadcast') continue;
+                if (!remoteJid || remoteJid === 'status@broadcast') {
+                    stats.skippedStatus++;
+                    continue;
+                }
 
                 // Voice notes / audio arrive as audioMessage (sometimes wrapped in ephemeral/view-once)
                 const audioMessage =
@@ -313,10 +387,17 @@ async function startWhatsApp() {
                     "";
 
                 // Keep only what we archive: text OR voice/audio. Skip everything else.
-                if (!textContent && !audioMessage) continue;
+                if (!textContent && !audioMessage) {
+                    stats.skippedUnsupported++;
+                    continue;
+                }
 
-                const timestamp = msg.messageTimestamp 
-                    ? (typeof msg.messageTimestamp === 'number' ? msg.messageTimestamp : msg.messageTimestamp.low) 
+                const timestamp = msg.messageTimestamp
+                    ? (typeof msg.messageTimestamp === 'number'
+                        ? msg.messageTimestamp
+                        : (typeof msg.messageTimestamp.toNumber === 'function'
+                            ? msg.messageTimestamp.toNumber()
+                            : msg.messageTimestamp.low))
                     : Math.floor(Date.now() / 1000);
 
                 const isFromMe = msg.key.fromMe || false;
@@ -373,7 +454,7 @@ async function startWhatsApp() {
                             msg,
                             'buffer',
                             {},
-                            { logger, reuploadRequest: sock.updateMediaMessage }
+                            { logger, reuploadRequest: currentSocket.updateMediaMessage }
                         );
                         const ext = (audioMessage.mimetype || '').includes('mp4') ? 'm4a' : 'ogg';
                         const storagePath = `voice-notes/${ACCOUNT_ID || 'default'}/${remoteJid}/${msg.key.id}.${ext}`;
@@ -400,11 +481,23 @@ async function startWhatsApp() {
                     .doc(msg.key.id)
                     .set(messageData, { merge: true });
 
+                stats.saved++;
             } catch (err) {
-                // Silent error handling
+                stats.failed++;
+                console.log(`System: Message archive failed (${context.source || 'unknown'}): ${err.message}`);
             }
         }
-    });
+
+        if (context.source || stats.saved || stats.failed) {
+            console.log(
+                `System: Message archive batch source=${context.source || 'unknown'} total=${stats.total} saved=${stats.saved} skippedNoMessage=${stats.skippedNoMessage} skippedStatus=${stats.skippedStatus} skippedUnsupported=${stats.skippedUnsupported} failed=${stats.failed}`
+            );
+        }
+
+        return stats;
+    }
+
+    registerMessageArchiveHandlers(currentSocket, archiveMessages);
 }
 
 // --- AUTH UTILS ---
@@ -433,6 +526,10 @@ app.get('/ping', (req, res) => {
 app.post('/api/verify', (req, res) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+
+    if (!AUTH_USER || !AUTH_PASS) {
+        return res.json({ success: true, authDisabled: true });
+    }
 
     const { username, password } = req.body;
 
@@ -510,23 +607,48 @@ const checkAuth = (req, res, next) => {
 
 app.use(checkAuth);
 
+Object.entries(ASSET_PATHS).forEach(([route, filePath]) => {
+    app.get(route, (req, res) => res.sendFile(filePath));
+});
+
+app.post('/pairing-code', async (req, res) => {
+    const phoneNumber = String(req.body.phoneNumber || '').replace(/\D/g, '');
+    if (!/^\d{8,15}$/.test(phoneNumber)) {
+        return res.status(400).send('Enter the phone number with country code, using 8 to 15 digits. <a href="/">Back</a>');
+    }
+    if (!sock || isConnected) {
+        return res.status(409).send('WhatsApp is not ready for pairing. <a href="/">Try again</a>');
+    }
+
+    try {
+        const code = await sock.requestPairingCode(phoneNumber);
+        const cleanCode = String(code).replace(/[^a-z0-9]/gi, '');
+        if (!cleanCode) throw new Error('WhatsApp returned an empty pairing code');
+        const displayCode = cleanCode.match(/.{1,4}/g).join('-');
+        res.set('Cache-Control', 'no-store');
+        return res.send(`
+            <html>
+                <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f0f2f5;">
+                    <div style="background: white; padding: 40px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <h2>WhatsApp pairing code</h2>
+                        <p style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">${displayCode}</p>
+                        <p>Enter this code in WhatsApp under Linked devices → Link a device → Link with phone number.</p>
+                    </div>
+                </body>
+            </html>
+        `);
+    } catch (err) {
+        console.log(`System: Pairing code request failed: ${err.message}`);
+        return res.status(500).send('Could not create a pairing code. <a href="/">Try again</a>');
+    }
+});
+
 // 6. Main Route
 app.get('/', async (req, res) => {
     const logoutBtn = `<a href="/logout" style="position: absolute; top: 10px; right: 10px; padding: 8px 16px; background: #ff4444; color: white; text-decoration: none; border-radius: 4px; font-size: 14px;">Logout</a>`;
 
     if (isConnected) {
-        return res.send(`
-            <html>
-                <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f0f2f5;">
-                    ${logoutBtn}
-                    <div style="background: white; padding: 40px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                        <h2 style="color: green;">System Operational</h2>
-                        <p style="color: #555;">Connected to WhatsApp. State synced to Firestore.</p>
-                        <p style="color: #999; font-size: 12px;">Back-end Service</p>
-                    </div>
-                </body>
-            </html>
-        `);
+        return res.sendFile(APP_HTML_PATH);
     }
 
     if (qrCodeData) {
@@ -534,13 +656,20 @@ app.get('/', async (req, res) => {
             const qrImage = await QRCode.toDataURL(qrCodeData);
             return res.send(`
                 <html>
-                    <head><meta http-equiv="refresh" content="5"></head>
                     <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f0f2f5;">
                         ${logoutBtn}
                         <div style="background: white; padding: 40px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                             <h2>Scan to Link</h2>
                             <img src="${qrImage}" alt="QR Code" />
-                            <p style="color: #666;">Refreshes every 5 seconds...</p>
+                            <p style="color: #666;">Reload the page if you need a new QR code.</p>
+                            <hr style="margin: 28px 0; border: 0; border-top: 1px solid #ddd;" />
+                            <h3>Or link with your phone number</h3>
+                            <form action="/pairing-code" method="POST">
+                                <input type="tel" name="phoneNumber" inputmode="tel" autocomplete="tel" placeholder="491701234567" required
+                                    style="padding: 10px; width: 220px; box-sizing: border-box;" />
+                                <button type="submit" style="padding: 10px 16px;">Create code</button>
+                            </form>
+                            <p style="color: #666; font-size: 12px;">Include the country code; spaces and + are allowed.</p>
                         </div>
                     </body>
                 </html>
@@ -563,6 +692,7 @@ app.get('/', async (req, res) => {
 
 // --- START SERVER ---
 app.listen(PORT, () => {
+    console.log(`System: Process started at ${new Date().toISOString()} (Node ${process.version}).`);
     startWhatsApp();
     console.log(`Server running on port ${PORT}`);
 });
@@ -570,7 +700,7 @@ app.listen(PORT, () => {
 // --- KEEP-ALIVE (Render free tier) ---
 // Render spins a free service down after 15 min without INBOUND traffic, which
 // would drop the WhatsApp connection. We ping our own public URL every 5 minutes
-// so there is always recent inbound traffic and the service never goes idle.
+// to reduce idle spin-downs. Free instances can still be restarted by Render.
 // RENDER_EXTERNAL_URL is injected automatically by Render (absent locally, so this
 // is a harmless no-op on your Mac).
 const SELF_URL = process.env.RENDER_EXTERNAL_URL;

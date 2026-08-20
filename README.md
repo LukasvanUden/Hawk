@@ -106,7 +106,7 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 4.  Open **WhatsApp** on your phone:
     * iOS: Settings -> Linked Devices
     * Android: Three dots -> Linked Devices
-5.  Tap **Link a Device** and scan the QR code.
+5.  Tap **Link a Device** and scan the QR code. Alternatively, enter your phone number on the Render page and use the displayed code under **Link with phone number**.
 6.  The page should refresh and say **"System Operational"**. Your backend is now listening!
 
 ---
@@ -157,7 +157,7 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 
 ## Step 6: Keep it Alive (UptimeRobot)
 
-Render's free tier spins down after inactivity. To keep your logger running 24/7:
+Render's free tier spins down after inactivity. To reduce idle spin-downs:
 
 1.  Create a free account on [UptimeRobot](https://uptimerobot.com/).
 2.  Click **Add New Monitor**.
@@ -167,12 +167,15 @@ Render's free tier spins down after inactivity. To keep your logger running 24/7
 6.  **Monitoring Interval**: 5 minutes.
 7.  Click **Create Monitor**.
 
+Render can still restart free instances. Truly uninterrupted operation requires an always-on paid instance; the automatic reconnect minimizes the interruption after a restart.
+
 ---
 
 ## Troubleshooting
 
 * **"No chats found"**: Send a message to the linked WhatsApp account to trigger the first log.
 * **"Incorrect Credentials"**: Ensure your Render backend is running and you are using the exact Username/Password defined in Render Environment Variables.
+* **Connection interruptions**: The backend reconnects automatically with increasing delays (up to 60 seconds). Check Render for `System: WhatsApp connection closed` to see the status code, reason, error message, and process uptime. A `loggedOut` reason requires scanning a new QR code.
 * **Proof/Phone Numbers**: If a chat shows a long ID (e.g., `1155...@lid`), wait a few minutes. The backend automatically syncs contacts and updates the record with the real phone number.
 
 ## Disclaimer
