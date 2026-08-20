@@ -420,7 +420,7 @@ async function startWhatsApp() {
             browser: Browsers.ubuntu('Chrome'),
             connectTimeoutMs: 60000,
             keepAliveIntervalMs: 30000,
-            syncFullHistory: true
+            syncFullHistory: false
         });
         sock = currentSocket;
     } catch (err) {
