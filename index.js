@@ -243,7 +243,7 @@ async function backfillRecentMessages(currentSocket, days = 3) {
         const chat = chats[chatIndex];
         if (sock !== currentSocket || !isConnected) throw new Error('WhatsApp connection changed during backfill');
 
-        const anchor = await chat.ref.collection('Messages')
+        const anchor = await chat.collection('Messages')
             .where('timestamp', '>', cutoff)
             .orderBy('timestamp', 'asc')
             .limit(1)
