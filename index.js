@@ -231,7 +231,7 @@ async function startWhatsApp() {
             version,
             logger,
             auth: state,
-            browser: Browsers.macOS('Desktop'),
+            browser: Browsers.ubuntu('Chrome'),
             connectTimeoutMs: 60000,
             keepAliveIntervalMs: 30000,
             syncFullHistory: true
