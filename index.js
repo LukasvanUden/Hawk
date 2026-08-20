@@ -705,6 +705,20 @@ app.post('/api/backfill', (req, res) => {
         .finally(() => { backfillRunning = false; });
 });
 
+app.get('/backfill', (req, res) => {
+    res.send(`
+        <html>
+            <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
+                <h2>WhatsApp history backfill</h2>
+                <p>Request up to three days of older messages for recently active chats.</p>
+                <form method="POST" action="/api/backfill">
+                    <button type="submit" style="padding: 10px 16px;">Start 3-day backfill</button>
+                </form>
+            </body>
+        </html>
+    `);
+});
+
 Object.entries(ASSET_PATHS).forEach(([route, filePath]) => {
     app.get(route, (req, res) => res.sendFile(filePath));
 });
