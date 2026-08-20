@@ -234,21 +234,25 @@ async function backfillRecentMessages(currentSocket, days = 3) {
         const chat = chats.docs[chatIndex];
         if (sock !== currentSocket || !isConnected) throw new Error('WhatsApp connection changed during backfill');
 
-        const latest = await chat.ref.collection('Messages').orderBy('timestamp', 'desc').limit(1).get();
-        if (latest.empty) {
+        const anchor = await chat.ref.collection('Messages')
+            .where('timestamp', '>', cutoff)
+            .orderBy('timestamp', 'asc')
+            .limit(1)
+            .get();
+        if (anchor.empty) {
             stats.skipped++;
             await setBackfillState({ ...stats, currentChat: chatIndex + 1 });
             continue;
         }
 
-        const latestMessage = latest.docs[0].data();
+        const oldestKnownMessage = anchor.docs[0].data();
         let oldestKey = {
             remoteJid: chat.id,
-            fromMe: Boolean(latestMessage.fromMe),
-            id: latestMessage.id
+            fromMe: Boolean(oldestKnownMessage.fromMe),
+            id: oldestKnownMessage.id
         };
-        let oldestTimestamp = Number(latestMessage.timestamp || 0);
-        if (!oldestKey.id || oldestTimestamp <= cutoff) {
+        let oldestTimestamp = Number(oldestKnownMessage.timestamp || 0);
+        if (!oldestKey.id) {
             stats.skipped++;
             await setBackfillState({ ...stats, currentChat: chatIndex + 1 });
             continue;
@@ -273,7 +277,6 @@ async function backfillRecentMessages(currentSocket, days = 3) {
 
                 oldestKey = oldest.message.key;
                 oldestTimestamp = oldest.timestamp;
-                if (messages.length < 50) break;
                 await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (error) {
                 stats.failed++;
@@ -307,7 +310,8 @@ async function launchBackfill(currentSocket, days) {
 
     try {
         const stats = await backfillRecentMessages(currentSocket, days);
-        await setBackfillState({ ...stats, status: 'complete', completedAt: new Date().toISOString() });
+        const status = stats.received === 0 ? 'empty' : 'complete';
+        await setBackfillState({ ...stats, status, completedAt: new Date().toISOString() });
         return stats;
     } catch (error) {
         await setBackfillState({ status: 'failed', error: error.message });
@@ -913,7 +917,7 @@ app.get('/backfill', (req, res) => {
                 </main>
                 <script>
                     const elements = Object.fromEntries(['days','start','pause','status','progress','chats','requested','received','failed','message'].map(function(id) { return [id, document.getElementById(id)]; }));
-                    const labels = { idle: 'Bereit', running: 'Läuft', paused: 'Pausiert', complete: 'Abgeschlossen', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen' };
+                    const labels = { idle: 'Bereit', running: 'Läuft', paused: 'Pausiert', complete: 'Abgeschlossen', empty: 'Beendet · keine zusätzliche History erhalten', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen' };
 
                     async function api(path, options) {
                         const response = await fetch(path, options);
