@@ -908,14 +908,17 @@
 
     <!-- MAIN APP SCRIPT -->
     <script>
-        const RENDER_BACKEND_URL = ""; 
+        const RENDER_BACKEND_URL = window.location.origin;
+        // Which Firestore collection this viewer reads. Default "Chats" = the first phone.
+        // For an additional phone's viewer, set this to its namespace, e.g. "phone2_Chats".
+        const DATA_COLLECTION = "Chats";
         const firebaseConfig = {
-            apiKey: "",
-            authDomain: "",
-            projectId: "",
-            storageBucket: "",
-            messagingSenderId: "",
-            appId: ""
+            apiKey: "AIzaSyDrikVOQfXDWtonYZJKkQUksTqe7TVC458",
+            authDomain: "hawk-663f1.firebaseapp.com",
+            projectId: "hawk-663f1",
+            storageBucket: "hawk-663f1.firebasestorage.app",
+            messagingSenderId: "1001573150851",
+            appId: "1:1001573150851:web:b2486f96116b3ce83babb6"
         };
         
         firebase.initializeApp(firebaseConfig);
@@ -1180,6 +1183,19 @@
                     }
                 }, 400); // Wait for CSS opacity transition
             } else {
+                try {
+                    const response = await fetch(`${RENDER_BACKEND_URL}/api/verify`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ username: '', password: '' })
+                    });
+                    const data = await response.json();
+                    if (data.authDisabled) {
+                        revealApp();
+                        return;
+                    }
+                } catch (e) {}
+
                 // If not valid, hide the spinner and reveal the login form
                 document.getElementById('authLoader').classList.add('hidden');
                 document.getElementById('authForm').classList.remove('hidden');
@@ -1567,7 +1583,7 @@
             if(window.chatListUnsub) window.chatListUnsub();
 
             // Use real-time listener instead of one-time .get()
-            window.chatListUnsub = db.collection('Chats').onSnapshot(async snap => {
+            window.chatListUnsub = db.collection(DATA_COLLECTION).onSnapshot(async snap => {
                 const groups = {};
                 const excluded = [''];
 
@@ -1600,8 +1616,8 @@ function renderChatList(chats) {
         const el = document.createElement('div'); 
         el.className = 'contact-item ripple-surface';
         
-        // Priority: Custom Name > Display Name > Phone Number > Raw ID
-        const primaryName = c.customName || c.displayName || c.phoneNumber || c.id;
+        // Priority: Custom Name > Display Name > WhatsApp Name (pushName) > Phone Number > Raw ID
+        const primaryName = c.customName || c.displayName || c.pushName || c.phoneNumber || c.id;
         const isGroup = c.id.includes('@g.us');
         
         // Structure: Avatar | [ Name                  Time ]
@@ -1642,7 +1658,7 @@ function renderChatList(chats) {
                 try {
                     let latestOnline = null;
                     for (const id of c.ids) {
-                        const snap = await db.collection('Chats').doc(id).collection('Messages')
+                        const snap = await db.collection(DATA_COLLECTION).doc(id).collection('Messages')
                             .orderBy('timestamp', 'desc').limit(1).get();
                         
                         if (!snap.empty) {
@@ -1699,7 +1715,16 @@ function renderChatList(chats) {
             isCurrentChatGroup = isGroup;
             document.getElementById('headerName').innerText = name;
             document.getElementById('chatHeaderContent').style.opacity = '1';
-            document.getElementById('headerId').innerText = displayId;
+            // Sub-line under the name: real phone number when we captured one,
+            // otherwise a clean hint (raw @lid/@g.us ids are never shown).
+            const _hid = document.getElementById('headerId');
+            if (/^\d+$/.test(displayId)) {
+                _hid.innerText = '+' + displayId;            // captured phone number
+            } else if (isGroup) {
+                _hid.innerText = 'Gruppe';
+            } else {
+                _hid.innerText = 'Nummer nicht verfügbar';
+            }
             document.getElementById('headerAvatar').innerHTML = isGroup ? `<span class="material-symbols-rounded">group</span>` : escapeHTML(name[0]).toUpperCase();
 
             if (window.matchMedia('(max-width: 768px)').matches) {
@@ -1748,7 +1773,7 @@ function renderChatList(chats) {
             let pendingSyncs = ids.length;
 
             ids.forEach(id => {
-                let query = db.collection('Chats').doc(id).collection('Messages').orderBy('timestamp');
+                let query = db.collection(DATA_COLLECTION).doc(id).collection('Messages').orderBy('timestamp');
                 if (lastTs > 0) {
                     query = query.where('timestamp', '>', lastTs);
                 }
@@ -1901,7 +1926,7 @@ function renderChatList(chats) {
         }
         
         function showRenameModal() { if(!activeChatId) return; document.getElementById('renameModal').classList.add('active'); document.getElementById('renameInput').value = document.getElementById('headerName').innerText; document.getElementById('chatMenu').classList.remove('show'); }
-        async function saveRename() { const name = document.getElementById('renameInput').value; if(name) { await db.collection('Chats').doc(activeChatId).set({customName: name}, {merge:true}); document.getElementById('headerName').innerText = name; closeModal('renameModal'); loadChats(); } }
+        async function saveRename() { const name = document.getElementById('renameInput').value; if(name) { await db.collection(DATA_COLLECTION).doc(activeChatId).set({customName: name}, {merge:true}); document.getElementById('headerName').innerText = name; closeModal('renameModal'); loadChats(); } }
         function showLogoutModal() { document.getElementById('logoutModal').classList.add('active'); }
 
         document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -1998,7 +2023,7 @@ function renderChatList(chats) {
                 await initIndexedDB();
 
                 updateRefreshProgress(30, "Fetching chat list...");
-                const snap = await db.collection('Chats').get();
+                const snap = await db.collection(DATA_COLLECTION).get();
                 const groups = {};
                 const excluded = ['917278779512@s.whatsapp.net', '201554426618024@lid'];
 
@@ -2024,7 +2049,7 @@ function renderChatList(chats) {
                     updateRefreshProgress(30 + ((done / total) * 60), `Fetching: ${name}...`);
                     
                     for (const id of chat.ids) {
-                        const msgSnap = await db.collection('Chats').doc(id).collection('Messages').get();
+                        const msgSnap = await db.collection(DATA_COLLECTION).doc(id).collection('Messages').get();
                         const msgs = [];
                         msgSnap.forEach(doc => {
                             const data = doc.data(); data.chatId = id; msgs.push(data);

@@ -30,6 +30,12 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
     const url = new URL(e.request.url);
 
+    // Always load pages from the server so deploys and service status stay current.
+    if (e.request.mode === 'navigate') {
+        e.respondWith(fetch(e.request));
+        return;
+    }
+
     // Dynamic Caching for Google Fonts (CSS & WOFF2 font files) to fix offline icons
     if (url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com') {
         e.respondWith(
