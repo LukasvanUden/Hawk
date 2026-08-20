@@ -331,7 +331,10 @@ async function startWhatsApp() {
             const details = describeDisconnect(lastDisconnect?.error);
             console.log(`System: WhatsApp connection closed ${JSON.stringify(details)}`);
 
-            if (details.statusCode === DisconnectReason.loggedOut) {
+            if (details.statusCode === DisconnectReason.connectionReplaced) {
+                console.log("System: A newer instance replaced this connection; reconnect disabled for this process.");
+                return;
+            } else if (details.statusCode === DisconnectReason.loggedOut) {
                 console.log("System: Device Logged Out. Wiping session from Firestore.");
                 await clearState();
                 qrCodeData = null;
