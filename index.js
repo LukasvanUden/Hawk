@@ -206,10 +206,14 @@ async function startWhatsApp() {
     isConnecting = true;
     const logger = pino({ level: 'warn' });
     let currentSocket;
+    let saveCreds;
+    let clearState;
 
     try {
         // Use our custom Firestore Auth adapter instead of useMultiFileAuthState
-        const { state, saveCreds, clearState } = await useFirestoreAuthState(db, AUTH_COLLECTION);
+        const authState = await useFirestoreAuthState(db, AUTH_COLLECTION);
+        const { state } = authState;
+        ({ saveCreds, clearState } = authState);
         const { version } = await fetchLatestBaileysVersion();
 
         console.log(`System: Connecting to WhatsApp servers (Baileys ${version.join('.')})...`);
