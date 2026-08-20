@@ -689,7 +689,7 @@ const checkAuth = (req, res, next) => {
 
 app.use(checkAuth);
 
-app.post('/api/backfill', (req, res) => {
+function startBackfill(req, res) {
     if (!sock || !isConnected) {
         return res.status(409).json({ error: 'WhatsApp is not connected.' });
     }
@@ -703,7 +703,10 @@ app.post('/api/backfill', (req, res) => {
     backfillRecentMessages(currentSocket, 3)
         .catch(error => console.log(`System: Backfill failed: ${error.message}`))
         .finally(() => { backfillRunning = false; });
-});
+}
+
+app.post('/api/backfill', startBackfill);
+app.get('/backfill/run', startBackfill);
 
 app.get('/backfill', (req, res) => {
     res.send(`
@@ -711,9 +714,7 @@ app.get('/backfill', (req, res) => {
             <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
                 <h2>WhatsApp history backfill</h2>
                 <p>Request up to three days of older messages for recently active chats.</p>
-                <form method="POST" action="/api/backfill">
-                    <button type="submit" style="padding: 10px 16px;">Start 3-day backfill</button>
-                </form>
+                <a href="/backfill/run" style="display: inline-block; padding: 10px 16px; background: #222; color: white; text-decoration: none; border-radius: 4px;">Start 3-day backfill</a>
             </body>
         </html>
     `);
