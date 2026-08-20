@@ -93,6 +93,8 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
     * `FIREBASE_SERVICE_ACCOUNT`: Paste the **entire content** of the JSON file you downloaded in Step 1.
     * `AUTH_USER`: Set a username (e.g., `admin`).
     * `AUTH_PASS`: Set a strong password. This creates the lock for your logger.
+    * `TELEGRAM_BOT_TOKEN` (optional): Bot token for connection alerts.
+    * `TELEGRAM_CHAT_ID` (optional): Recipient chat ID for connection alerts.
 7.  Click **Create Web Service**.
 8.  Wait for the deployment to finish. Render will give you a URL like `https://your-app.onrender.com`.
 
@@ -178,6 +180,7 @@ Render can still restart free instances. Truly uninterrupted operation requires 
 * **"No chats found"**: Send a message to the linked WhatsApp account to trigger the first log.
 * **"Incorrect Credentials"**: Ensure your Render backend is running and you are using the exact Username/Password defined in Render Environment Variables.
 * **Connection interruptions**: The backend reconnects automatically with increasing delays (up to 60 seconds). Check Render for `System: WhatsApp connection closed` to see the status code, reason, error message, and process uptime. A `loggedOut` reason clears the complete stored WhatsApp session before generating a new QR code. A Render worker replaced during deployment does not reconnect and compete with the newer worker.
+* **Telegram alerts**: With `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` set, Hawk sends an alert after two continuous minutes offline, immediately on `loggedOut`, and again after recovery.
 * **Proof/Phone Numbers**: If a chat shows a long ID (e.g., `1155...@lid`), wait a few minutes. The backend automatically syncs contacts and updates the record with the real phone number.
 
 ## Disclaimer

@@ -20,6 +20,8 @@ const { fetchHistoryBatch, registerMessageArchiveHandlers } = require('./message
 const PORT = process.env.PORT || 3000;
 const AUTH_USER = process.env.AUTH_USER;
 const AUTH_PASS = process.env.AUTH_PASS;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const APP_HTML_PATH = path.join(__dirname, 'index.html');
 const ASSET_PATHS = {
     '/assets/icon.svg': path.join(__dirname, 'icon.svg'),
@@ -181,8 +183,11 @@ let isConnected = false;
 let isConnecting = false;
 let reconnectTimer = null;
 let reconnectAttempt = 0;
+let disconnectAlertTimer = null;
+let disconnectAlertSent = false;
 let backfillRunning = false;
 let backfillPaused = false;
+const DISCONNECT_ALERT_DELAY_MS = 2 * 60 * 1000;
 const BACKFILL_JOB_ID = 'backfill-2026-08-20-3-days';
 const BACKFILL_CONTROL_ID = 'backfill-control';
 let backfillState = {
@@ -356,6 +361,41 @@ function describeDisconnect(error) {
     };
 }
 
+async function sendTelegramAlert(text) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return false;
+
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        console.log('System: Telegram alert sent.');
+        return true;
+    } catch (error) {
+        console.log(`System: Telegram alert failed: ${error.message}`);
+        return false;
+    }
+}
+
+function clearDisconnectAlertTimer() {
+    if (!disconnectAlertTimer) return;
+    clearTimeout(disconnectAlertTimer);
+    disconnectAlertTimer = null;
+}
+
+function scheduleDisconnectAlert(details) {
+    if (disconnectAlertTimer || disconnectAlertSent || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+    disconnectAlertTimer = setTimeout(async () => {
+        disconnectAlertTimer = null;
+        if (isConnected) return;
+        disconnectAlertSent = await sendTelegramAlert(
+            `🔴 Hawk ist seit 2 Minuten von WhatsApp getrennt.\nGrund: ${details.reason} (${details.statusCode})`
+        );
+    }, DISCONNECT_ALERT_DELAY_MS);
+}
+
 function scheduleReconnect(delayMs = Math.min(5000 * (2 ** reconnectAttempt), 60000)) {
     if (reconnectTimer) {
         console.log("System: Reconnect already scheduled; ignoring duplicate close event.");
@@ -433,12 +473,17 @@ async function startWhatsApp() {
                 console.log("System: A newer instance replaced this connection; reconnect disabled for this process.");
                 return;
             } else if (details.statusCode === DisconnectReason.loggedOut) {
+                clearDisconnectAlertTimer();
+                disconnectAlertSent = await sendTelegramAlert(
+                    '🔴 Hawk wurde von WhatsApp abgemeldet (401). Eine neue Verknüpfung ist erforderlich.'
+                ) || disconnectAlertSent;
                 console.log("System: Device Logged Out. Wiping session from Firestore.");
                 await clearState();
                 qrCodeData = null;
                 reconnectAttempt = 0;
                 scheduleReconnect(0); // Restart to grab a fresh QR code
             } else {
+                scheduleDisconnectAlert(details);
                 scheduleReconnect(details.statusCode === DisconnectReason.restartRequired ? 0 : undefined);
             }
         } else if (connection === 'open') {
@@ -449,6 +494,11 @@ async function startWhatsApp() {
             if (reconnectTimer) {
                 clearTimeout(reconnectTimer);
                 reconnectTimer = null;
+            }
+            clearDisconnectAlertTimer();
+            if (disconnectAlertSent) {
+                disconnectAlertSent = false;
+                await sendTelegramAlert('🟢 Hawk ist wieder mit WhatsApp verbunden.');
             }
 
             // Backfill all group names (subjects) once we're connected
