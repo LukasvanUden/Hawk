@@ -109,7 +109,7 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 5.  Tap **Link a Device** and scan the QR code. Alternatively, enter your phone number on the Render page and use the displayed code under **Link with phone number**.
 6.  The page should refresh and say **"System Operational"**. Your backend is now listening!
 
-To request up to three days of older messages for recently active chats, open the authenticated `/backfill` page and confirm the run. Hawk requests history in WhatsApp's 50-message batches and logs a final summary. Availability still depends on what the primary phone provides.
+To request one to seven days of older messages for recently active chats, open the authenticated `/backfill` page or use **Settings → History Backfill**. The page shows live progress and can pause or resume between WhatsApp's 50-message batches. Availability still depends on what the primary phone provides.
 
 ---
 

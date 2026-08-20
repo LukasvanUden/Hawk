@@ -182,7 +182,38 @@ let isConnecting = false;
 let reconnectTimer = null;
 let reconnectAttempt = 0;
 let backfillRunning = false;
+let backfillPaused = false;
 const BACKFILL_JOB_ID = 'backfill-2026-08-20-3-days';
+const BACKFILL_CONTROL_ID = 'backfill-control';
+let backfillState = {
+    status: 'idle',
+    days: 3,
+    chats: 0,
+    currentChat: 0,
+    requested: 0,
+    received: 0,
+    skipped: 0,
+    failed: 0,
+    error: null
+};
+
+async function setBackfillState(patch) {
+    backfillState = { ...backfillState, ...patch, updatedAt: new Date().toISOString() };
+    try {
+        await db.collection('Hawk_Jobs').doc(BACKFILL_CONTROL_ID).set(backfillState, { merge: true });
+    } catch (error) {
+        console.log(`System: Could not persist backfill status: ${error.message}`);
+    }
+}
+
+async function waitWhileBackfillPaused(currentSocket) {
+    while (backfillPaused) {
+        if (sock !== currentSocket || !isConnected) {
+            throw new Error('WhatsApp connection changed while backfill was paused');
+        }
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+}
 
 function messageTimestampSeconds(message) {
     const timestamp = message?.messageTimestamp;
@@ -197,12 +228,16 @@ async function backfillRecentMessages(currentSocket, days = 3) {
     const chats = await db.collection(CHATS_COLLECTION).where('lastActive', '>=', cutoff).get();
     const stats = { chats: chats.size, requested: 0, received: 0, skipped: 0, failed: 0 };
 
-    for (const chat of chats.docs) {
+    await setBackfillState({ ...stats, currentChat: 0 });
+
+    for (let chatIndex = 0; chatIndex < chats.docs.length; chatIndex++) {
+        const chat = chats.docs[chatIndex];
         if (sock !== currentSocket || !isConnected) throw new Error('WhatsApp connection changed during backfill');
 
         const latest = await chat.ref.collection('Messages').orderBy('timestamp', 'desc').limit(1).get();
         if (latest.empty) {
             stats.skipped++;
+            await setBackfillState({ ...stats, currentChat: chatIndex + 1 });
             continue;
         }
 
@@ -215,15 +250,18 @@ async function backfillRecentMessages(currentSocket, days = 3) {
         let oldestTimestamp = Number(latestMessage.timestamp || 0);
         if (!oldestKey.id || oldestTimestamp <= cutoff) {
             stats.skipped++;
+            await setBackfillState({ ...stats, currentChat: chatIndex + 1 });
             continue;
         }
 
         // ponytail: cap each chat at 500 messages; raise only if a busier chat needs more than three days.
         for (let page = 0; page < 10 && oldestTimestamp > cutoff; page++) {
             try {
+                await waitWhileBackfillPaused(currentSocket);
                 const messages = await fetchHistoryBatch(currentSocket, 50, oldestKey, oldestTimestamp);
                 stats.requested++;
                 stats.received += messages.length;
+                await setBackfillState({ ...stats, currentChat: chatIndex + 1 });
                 if (!messages.length) break;
 
                 const datedMessages = messages
@@ -239,6 +277,7 @@ async function backfillRecentMessages(currentSocket, days = 3) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (error) {
                 stats.failed++;
+                await setBackfillState({ ...stats, currentChat: chatIndex + 1 });
                 console.log(`System: Backfill chat failed: ${error.message}`);
                 break;
             }
@@ -249,21 +288,48 @@ async function backfillRecentMessages(currentSocket, days = 3) {
     return stats;
 }
 
+async function launchBackfill(currentSocket, days) {
+    backfillRunning = true;
+    backfillPaused = false;
+    await setBackfillState({
+        status: 'running',
+        days,
+        chats: 0,
+        currentChat: 0,
+        requested: 0,
+        received: 0,
+        skipped: 0,
+        failed: 0,
+        error: null,
+        startedAt: new Date().toISOString(),
+        completedAt: null
+    });
+
+    try {
+        const stats = await backfillRecentMessages(currentSocket, days);
+        await setBackfillState({ ...stats, status: 'complete', completedAt: new Date().toISOString() });
+        return stats;
+    } catch (error) {
+        await setBackfillState({ status: 'failed', error: error.message });
+        throw error;
+    } finally {
+        backfillRunning = false;
+        backfillPaused = false;
+    }
+}
+
 async function runPendingBackfill(currentSocket) {
     const job = db.collection('Hawk_Jobs').doc(BACKFILL_JOB_ID);
     const snapshot = await job.get();
     if (snapshot.data()?.status === 'complete' || backfillRunning) return;
 
-    backfillRunning = true;
     await job.set({ status: 'running', startedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
     try {
-        const stats = await backfillRecentMessages(currentSocket, 3);
+        const stats = await launchBackfill(currentSocket, 3);
         await job.set({ status: 'complete', completedAt: admin.firestore.FieldValue.serverTimestamp(), stats }, { merge: true });
     } catch (error) {
         await job.set({ status: 'failed', error: error.message }, { merge: true });
         console.log(`System: Backfill failed: ${error.message}`);
-    } finally {
-        backfillRunning = false;
     }
 }
 
@@ -719,24 +785,187 @@ function startBackfill(req, res) {
         return res.status(409).json({ error: 'A backfill is already running.' });
     }
 
+    const days = Number(req.body?.days);
+    if (!Number.isInteger(days) || days < 1 || days > 7) {
+        return res.status(400).json({ error: 'Days must be a whole number between 1 and 7.' });
+    }
+
     const currentSocket = sock;
-    backfillRunning = true;
-    res.status(202).json({ started: true, days: 3 });
-    backfillRecentMessages(currentSocket, 3)
+    res.status(202).json({ started: true, days });
+    launchBackfill(currentSocket, days)
         .catch(error => console.log(`System: Backfill failed: ${error.message}`))
-        .finally(() => { backfillRunning = false; });
 }
 
-app.post('/api/backfill', startBackfill);
-app.get('/backfill/run', startBackfill);
+async function getBackfillStatus(req, res) {
+    let state = backfillState;
+    if (!backfillRunning) {
+        try {
+            const snapshot = await db.collection('Hawk_Jobs').doc(BACKFILL_CONTROL_ID).get();
+            if (snapshot.exists) state = snapshot.data();
+        } catch (error) {
+            return res.status(500).json({ error: error.message });
+        }
+    }
+
+    if (!backfillRunning && (state.status === 'running' || state.status === 'paused')) {
+        state = { ...state, status: 'interrupted' };
+    }
+    res.json({ ...state, connected: isConnected });
+}
+
+app.get('/api/backfill/status', getBackfillStatus);
+app.post('/api/backfill/start', startBackfill);
+app.post('/api/backfill/pause', async (req, res) => {
+    if (!backfillRunning || backfillPaused) {
+        return res.status(409).json({ error: 'No running backfill can be paused.' });
+    }
+    backfillPaused = true;
+    await setBackfillState({ status: 'paused' });
+    res.json({ paused: true });
+});
+app.post('/api/backfill/resume', async (req, res) => {
+    if (backfillRunning) {
+        if (!backfillPaused) return res.status(409).json({ error: 'The backfill is already running.' });
+        backfillPaused = false;
+        await setBackfillState({ status: 'running' });
+        return res.json({ resumed: true });
+    }
+    if (!sock || !isConnected) {
+        return res.status(409).json({ error: 'WhatsApp is not connected.' });
+    }
+
+    const snapshot = await db.collection('Hawk_Jobs').doc(BACKFILL_CONTROL_ID).get();
+    const stored = snapshot.data();
+    if (!stored || (stored.status !== 'running' && stored.status !== 'paused')) {
+        return res.status(409).json({ error: 'There is no interrupted backfill to resume.' });
+    }
+
+    res.status(202).json({ resumed: true, restarted: true });
+    launchBackfill(sock, Number(stored.days) || 3)
+        .catch(error => console.log(`System: Backfill resume failed: ${error.message}`));
+});
 
 app.get('/backfill', (req, res) => {
     res.send(`
-        <html>
-            <body style="font-family: sans-serif; text-align: center; padding-top: 50px;">
-                <h2>WhatsApp history backfill</h2>
-                <p>Request up to three days of older messages for recently active chats.</p>
-                <a href="/backfill/run" style="display: inline-block; padding: 10px 16px; background: #222; color: white; text-decoration: none; border-radius: 4px;">Start 3-day backfill</a>
+        <!doctype html>
+        <html lang="de">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>Hawk Backfill</title>
+                <style>
+                    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+                    body { margin: 0; background: #f5f7f7; color: #17201d; }
+                    main { box-sizing: border-box; max-width: 560px; min-height: 100vh; margin: auto; padding: 28px 20px; }
+                    a { color: inherit; }
+                    .card { margin-top: 24px; padding: 24px; border: 1px solid #d7ddda; border-radius: 18px; background: white; box-shadow: 0 8px 30px rgba(0,0,0,.06); }
+                    .row { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
+                    label { font-weight: 650; }
+                    select, button { min-height: 44px; border: 1px solid #aeb8b3; border-radius: 10px; padding: 0 14px; font: inherit; }
+                    select { margin-left: auto; background: white; color: inherit; }
+                    button { cursor: pointer; background: #182b24; color: white; border-color: #182b24; }
+                    button.secondary { background: white; color: #182b24; }
+                    button:disabled { cursor: default; opacity: .45; }
+                    progress { width: 100%; height: 12px; }
+                    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 18px; }
+                    .stat { padding: 12px; border-radius: 10px; background: #eef2f0; }
+                    .stat strong { display: block; font-size: 1.35rem; }
+                    #message { min-height: 24px; color: #a12a2a; }
+                    @media (prefers-color-scheme: dark) {
+                        body { background: #101513; color: #edf4f0; }
+                        .card, select, button.secondary { background: #18201d; color: #edf4f0; }
+                        .stat { background: #25302c; }
+                    }
+                </style>
+            </head>
+            <body>
+                <main>
+                    <a href="/">← Zurück zu Hawk</a>
+                    <div class="card">
+                        <h1>History Backfill</h1>
+                        <p>Ältere WhatsApp-Nachrichten in Blöcken von maximal 50 abrufen.</p>
+                        <div class="row">
+                            <label for="days">Zeitraum</label>
+                            <select id="days">
+                                <option value="1">1 Tag</option>
+                                <option value="2">2 Tage</option>
+                                <option value="3" selected>3 Tage</option>
+                                <option value="4">4 Tage</option>
+                                <option value="5">5 Tage</option>
+                                <option value="6">6 Tage</option>
+                                <option value="7">7 Tage</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <button id="start">Starten</button>
+                            <button id="pause" class="secondary" disabled>Pausieren</button>
+                        </div>
+                        <p><strong>Status:</strong> <span id="status">Wird geladen…</span></p>
+                        <progress id="progress" max="1" value="0"></progress>
+                        <div class="stats">
+                            <div class="stat"><strong id="chats">0/0</strong>Chats</div>
+                            <div class="stat"><strong id="requested">0</strong>Anfragen</div>
+                            <div class="stat"><strong id="received">0</strong>Empfangen</div>
+                            <div class="stat"><strong id="failed">0</strong>Fehler</div>
+                        </div>
+                        <p id="message" role="alert"></p>
+                    </div>
+                </main>
+                <script>
+                    const elements = Object.fromEntries(['days','start','pause','status','progress','chats','requested','received','failed','message'].map(function(id) { return [id, document.getElementById(id)]; }));
+                    const labels = { idle: 'Bereit', running: 'Läuft', paused: 'Pausiert', complete: 'Abgeschlossen', failed: 'Fehlgeschlagen', interrupted: 'Unterbrochen' };
+
+                    async function api(path, options) {
+                        const response = await fetch(path, options);
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Anfrage fehlgeschlagen');
+                        return data;
+                    }
+
+                    function render(state) {
+                        const active = state.status === 'running' || state.status === 'paused';
+                        const resumable = state.status === 'interrupted';
+                        elements.status.textContent = labels[state.status] || state.status;
+                        if (!state.connected) elements.status.textContent += ' · WhatsApp getrennt';
+                        elements.days.value = String(state.days || 3);
+                        elements.days.disabled = active;
+                        elements.start.disabled = active || resumable || !state.connected;
+                        elements.pause.disabled = (!active && !resumable) || !state.connected;
+                        elements.pause.textContent = state.status === 'paused' || resumable ? 'Fortsetzen' : 'Pausieren';
+                        elements.progress.max = Math.max(1, Number(state.chats) || 0);
+                        elements.progress.value = Number(state.currentChat) || 0;
+                        elements.chats.textContent = (state.currentChat || 0) + '/' + (state.chats || 0);
+                        elements.requested.textContent = state.requested || 0;
+                        elements.received.textContent = state.received || 0;
+                        elements.failed.textContent = state.failed || 0;
+                        elements.message.textContent = state.error || '';
+                    }
+
+                    async function refresh() {
+                        try { render(await api('/api/backfill/status')); }
+                        catch (error) { elements.message.textContent = error.message; }
+                    }
+
+                    elements.start.addEventListener('click', async function() {
+                        elements.message.textContent = '';
+                        try {
+                            await api('/api/backfill/start', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ days: Number(elements.days.value) }) });
+                            await refresh();
+                        } catch (error) { elements.message.textContent = error.message; }
+                    });
+
+                    elements.pause.addEventListener('click', async function() {
+                        elements.message.textContent = '';
+                        try {
+                            const action = elements.pause.textContent === 'Fortsetzen' ? 'resume' : 'pause';
+                            await api('/api/backfill/' + action, { method: 'POST' });
+                            await refresh();
+                        } catch (error) { elements.message.textContent = error.message; }
+                    });
+
+                    refresh();
+                    setInterval(refresh, 1500);
+                </script>
             </body>
         </html>
     `);
