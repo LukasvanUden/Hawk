@@ -180,7 +180,7 @@ Render can still restart free instances. Truly uninterrupted operation requires 
 * **"No chats found"**: Send a message to the linked WhatsApp account to trigger the first log.
 * **"Incorrect Credentials"**: Ensure your Render backend is running and you are using the exact Username/Password defined in Render Environment Variables.
 * **Connection interruptions**: The backend reconnects automatically with increasing delays (up to 60 seconds). Check Render for `System: WhatsApp connection closed` to see the status code, reason, error message, and process uptime. A `loggedOut` reason clears the complete stored WhatsApp session before generating a new QR code. A Render worker replaced during deployment does not reconnect and compete with the newer worker.
-* **Telegram alerts**: With `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` set, Hawk sends an alert after two continuous minutes offline, immediately on `loggedOut`, and again after recovery.
+* **Telegram alerts**: With `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` set, Hawk immediately reports connection errors and disconnects, then confirms initial connections and successful reconnects. Repeated failures during the same outage are deduplicated.
 * **Proof/Phone Numbers**: If a chat shows a long ID (e.g., `1155...@lid`), wait a few minutes. The backend automatically syncs contacts and updates the record with the real phone number.
 
 ## Disclaimer

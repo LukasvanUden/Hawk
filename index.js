@@ -183,11 +183,9 @@ let isConnected = false;
 let isConnecting = false;
 let reconnectTimer = null;
 let reconnectAttempt = 0;
-let disconnectAlertTimer = null;
 let disconnectAlertSent = false;
 let backfillRunning = false;
 let backfillPaused = false;
-const DISCONNECT_ALERT_DELAY_MS = 2 * 60 * 1000;
 const BACKFILL_JOB_ID = 'backfill-2026-08-20-3-days';
 const BACKFILL_CONTROL_ID = 'backfill-control';
 let backfillState = {
@@ -368,7 +366,8 @@ async function sendTelegramAlert(text) {
         const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text })
+            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+            signal: AbortSignal.timeout(10000)
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         console.log('System: Telegram alert sent.');
@@ -377,23 +376,6 @@ async function sendTelegramAlert(text) {
         console.log(`System: Telegram alert failed: ${error.message}`);
         return false;
     }
-}
-
-function clearDisconnectAlertTimer() {
-    if (!disconnectAlertTimer) return;
-    clearTimeout(disconnectAlertTimer);
-    disconnectAlertTimer = null;
-}
-
-function scheduleDisconnectAlert(details) {
-    if (disconnectAlertTimer || disconnectAlertSent || !TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-    disconnectAlertTimer = setTimeout(async () => {
-        disconnectAlertTimer = null;
-        if (isConnected) return;
-        disconnectAlertSent = await sendTelegramAlert(
-            `🔴 Hawk ist seit 2 Minuten von WhatsApp getrennt.\nGrund: ${details.reason} (${details.statusCode})`
-        );
-    }, DISCONNECT_ALERT_DELAY_MS);
 }
 
 function scheduleReconnect(delayMs = Math.min(5000 * (2 ** reconnectAttempt), 60000)) {
@@ -442,8 +424,14 @@ async function startWhatsApp() {
         });
         sock = currentSocket;
     } catch (err) {
-        console.error(`System: WhatsApp connection setup failed ${JSON.stringify(describeDisconnect(err))}`);
+        const details = describeDisconnect(err);
+        console.error(`System: WhatsApp connection setup failed ${JSON.stringify(details)}`);
         scheduleReconnect();
+        if (!disconnectAlertSent) {
+            disconnectAlertSent = await sendTelegramAlert(
+                `🔴 Hawk konnte keine WhatsApp-Verbindung herstellen.\nGrund: ${details.reason} (${details.statusCode})`
+            );
+        }
         return;
     } finally {
         isConnecting = false;
@@ -473,7 +461,6 @@ async function startWhatsApp() {
                 console.log("System: A newer instance replaced this connection; reconnect disabled for this process.");
                 return;
             } else if (details.statusCode === DisconnectReason.loggedOut) {
-                clearDisconnectAlertTimer();
                 disconnectAlertSent = await sendTelegramAlert(
                     '🔴 Hawk wurde von WhatsApp abgemeldet (401). Eine neue Verknüpfung ist erforderlich.'
                 ) || disconnectAlertSent;
@@ -483,8 +470,12 @@ async function startWhatsApp() {
                 reconnectAttempt = 0;
                 scheduleReconnect(0); // Restart to grab a fresh QR code
             } else {
-                scheduleDisconnectAlert(details);
                 scheduleReconnect(details.statusCode === DisconnectReason.restartRequired ? 0 : undefined);
+                if (!disconnectAlertSent) {
+                    disconnectAlertSent = await sendTelegramAlert(
+                        `🔴 Hawk hat die WhatsApp-Verbindung verloren.\nGrund: ${details.reason} (${details.statusCode})`
+                    );
+                }
             }
         } else if (connection === 'open') {
             console.log("System: Connection Open and Authenticated. Firebase Auth Sync Active.");
@@ -495,11 +486,11 @@ async function startWhatsApp() {
                 clearTimeout(reconnectTimer);
                 reconnectTimer = null;
             }
-            clearDisconnectAlertTimer();
-            if (disconnectAlertSent) {
-                disconnectAlertSent = false;
-                await sendTelegramAlert('🟢 Hawk ist wieder mit WhatsApp verbunden.');
-            }
+            const connectedMessage = disconnectAlertSent
+                ? '🟢 Hawk hat die WhatsApp-Verbindung wiederhergestellt.'
+                : '🟢 Hawk wurde erfolgreich mit WhatsApp verbunden.';
+            disconnectAlertSent = false;
+            await sendTelegramAlert(connectedMessage);
 
             // Backfill all group names (subjects) once we're connected
             try {
