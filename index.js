@@ -1,5 +1,6 @@
 const {
     default: makeWASocket,
+    Browsers,
     DisconnectReason,
     fetchLatestBaileysVersion,
     BufferJSON,
@@ -120,8 +121,19 @@ async function useFirestoreAuthState(db, collectionName = 'whatsapp_auth') {
         }
     };
 
+    const clearState = async () => {
+        const documents = await collection.listDocuments();
+        await Promise.all(documents.map(document => document.delete()));
+        console.log(`System: Cleared ${documents.length} WhatsApp auth document(s) from Firestore.`);
+    };
+
     // Load credentials from Firestore or generate new ones (for initial QR scan)
-    const creds = (await readData('creds')) || initAuthCreds();
+    const storedCreds = await readData('creds');
+    if (!storedCreds) {
+        // A missing primary credential document means any remaining Signal keys are stale.
+        await clearState();
+    }
+    const creds = storedCreds || initAuthCreds();
 
     return {
         state: {
@@ -158,10 +170,7 @@ async function useFirestoreAuthState(db, collectionName = 'whatsapp_auth') {
         saveCreds: () => {
             return writeData(creds, 'creds');
         },
-        clearState: async () => {
-            // We only need to delete the primary creds to force a new QR scan
-            await removeData('creds');
-        }
+        clearState
     };
 }
 
@@ -222,7 +231,7 @@ async function startWhatsApp() {
             version,
             logger,
             auth: state,
-            browser: ["iPhone", "Safari", "1.0.0"],
+            browser: Browsers.macOS('Desktop'),
             connectTimeoutMs: 60000,
             keepAliveIntervalMs: 30000,
             syncFullHistory: true
