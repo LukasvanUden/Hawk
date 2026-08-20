@@ -225,13 +225,22 @@ function messageTimestampSeconds(message) {
 
 async function backfillRecentMessages(currentSocket, days = 3) {
     const cutoff = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
-    const chats = await db.collection(CHATS_COLLECTION).where('lastActive', '>=', cutoff).get();
-    const stats = { chats: chats.size, requested: 0, received: 0, skipped: 0, failed: 0 };
+    // ponytail: scan stored timestamps until this dataset needs a collection-group index.
+    const storedMessages = await db.collectionGroup('Messages').select('timestamp').get();
+    const chatIds = new Set();
+    for (const message of storedMessages.docs) {
+        const chat = message.ref.parent.parent;
+        if (chat?.parent.id === CHATS_COLLECTION && Number(message.data().timestamp || 0) >= cutoff) {
+            chatIds.add(chat.id);
+        }
+    }
+    const chats = [...chatIds].sort().map(id => db.collection(CHATS_COLLECTION).doc(id));
+    const stats = { chats: chats.length, requested: 0, received: 0, skipped: 0, failed: 0 };
 
     await setBackfillState({ ...stats, currentChat: 0 });
 
-    for (let chatIndex = 0; chatIndex < chats.docs.length; chatIndex++) {
-        const chat = chats.docs[chatIndex];
+    for (let chatIndex = 0; chatIndex < chats.length; chatIndex++) {
+        const chat = chats[chatIndex];
         if (sock !== currentSocket || !isConnected) throw new Error('WhatsApp connection changed during backfill');
 
         const anchor = await chat.ref.collection('Messages')
@@ -531,6 +540,7 @@ async function startWhatsApp() {
             skippedUnsupported: 0,
             failed: 0
         };
+        const chatUpdates = new Map();
 
         for (const msg of messages) {
             try {
@@ -594,8 +604,6 @@ async function startWhatsApp() {
                     chatMeta.phoneNumber = msg.key.senderPn.split('@')[0];
                 }
 
-                await db.collection(CHATS_COLLECTION).doc(remoteJid).set(chatMeta, { merge: true });
-
                 // Resolve a group's real name (subject) once per session
                 if (isGroupChat && !resolvedGroups.has(remoteJid)) {
                     resolvedGroups.add(remoteJid);
@@ -655,10 +663,29 @@ async function startWhatsApp() {
                     .doc(msg.key.id)
                     .set(messageData, { merge: true });
 
+                const pendingChat = chatUpdates.get(remoteJid) || {};
+                chatUpdates.set(remoteJid, {
+                    ...pendingChat,
+                    ...chatMeta,
+                    lastActive: Math.max(Number(pendingChat.lastActive || 0), timestamp)
+                });
                 stats.saved++;
             } catch (err) {
                 stats.failed++;
                 console.log(`System: Message archive failed (${context.source || 'unknown'}): ${err.message}`);
+            }
+        }
+
+        for (const [remoteJid, update] of chatUpdates) {
+            const chat = db.collection(CHATS_COLLECTION).doc(remoteJid);
+            try {
+                await db.runTransaction(async transaction => {
+                    const existing = await transaction.get(chat);
+                    update.lastActive = Math.max(Number(existing.data()?.lastActive || 0), update.lastActive);
+                    transaction.set(chat, update, { merge: true });
+                });
+            } catch (error) {
+                console.log(`System: Chat metadata update failed (${remoteJid}): ${error.message}`);
             }
         }
 
