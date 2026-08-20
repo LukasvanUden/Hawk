@@ -669,12 +669,13 @@ app.get('/', async (req, res) => {
             const qrImage = await QRCode.toDataURL(qrCodeData);
             return res.send(`
                 <html>
+                    <head><meta http-equiv="refresh" content="10"></head>
                     <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f0f2f5;">
                         ${logoutBtn}
                         <div style="background: white; padding: 40px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                             <h2>Scan to Link</h2>
                             <img src="${qrImage}" alt="QR Code" />
-                            <p style="color: #666;">Reload the page if you need a new QR code.</p>
+                            <p style="color: #666;">The QR code refreshes automatically.</p>
                             <hr style="margin: 28px 0; border: 0; border-top: 1px solid #ddd;" />
                             <h3>Or link with your phone number</h3>
                             <form action="/pairing-code" method="POST">
