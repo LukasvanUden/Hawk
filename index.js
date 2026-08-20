@@ -182,6 +182,7 @@ let isConnecting = false;
 let reconnectTimer = null;
 let reconnectAttempt = 0;
 let backfillRunning = false;
+const BACKFILL_JOB_ID = 'backfill-2026-08-20-3-days';
 
 function messageTimestampSeconds(message) {
     const timestamp = message?.messageTimestamp;
@@ -246,6 +247,24 @@ async function backfillRecentMessages(currentSocket, days = 3) {
 
     console.log(`System: Backfill complete days=${days} chats=${stats.chats} requests=${stats.requested} received=${stats.received} skipped=${stats.skipped} failed=${stats.failed}`);
     return stats;
+}
+
+async function runPendingBackfill(currentSocket) {
+    const job = db.collection('Hawk_Jobs').doc(BACKFILL_JOB_ID);
+    const snapshot = await job.get();
+    if (snapshot.data()?.status === 'complete' || backfillRunning) return;
+
+    backfillRunning = true;
+    await job.set({ status: 'running', startedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    try {
+        const stats = await backfillRecentMessages(currentSocket, 3);
+        await job.set({ status: 'complete', completedAt: admin.firestore.FieldValue.serverTimestamp(), stats }, { merge: true });
+    } catch (error) {
+        await job.set({ status: 'failed', error: error.message }, { merge: true });
+        console.log(`System: Backfill failed: ${error.message}`);
+    } finally {
+        backfillRunning = false;
+    }
 }
 
 function describeDisconnect(error) {
@@ -367,6 +386,9 @@ async function startWhatsApp() {
             } catch (err) {
                 console.log("System: Could not fetch group names:", err.message);
             }
+
+            runPendingBackfill(currentSocket)
+                .catch(error => console.log(`System: Could not start pending backfill: ${error.message}`));
         }
     });
 
