@@ -814,6 +814,9 @@ async function getBackfillStatus(req, res) {
     if (!backfillRunning && (state.status === 'running' || state.status === 'paused')) {
         state = { ...state, status: 'interrupted' };
     }
+    if (state.status === 'complete' && Number(state.received) === 0) {
+        state = { ...state, status: 'empty' };
+    }
     res.json({ ...state, connected: isConnected });
 }
 
