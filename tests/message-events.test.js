@@ -2,7 +2,7 @@ const { EventEmitter } = require('node:events');
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { registerMessageArchiveHandlers } = require('../message-events');
+const { fetchHistoryBatch, registerMessageArchiveHandlers } = require('../message-events');
 
 function createSocket() {
     return { ev: new EventEmitter() };
@@ -61,4 +61,30 @@ test('archives notify and append upserts only', async () => {
     assert.deepEqual(archived.map(batch => batch.messages[0].key.id), ['notify-message', 'append-message']);
     assert.deepEqual(archived.map(batch => batch.context.source), ['upsert', 'upsert']);
     assert.equal(archived[1].context.requestId, 'phone-backfill');
+});
+
+test('waits for the requested on-demand history batch', async () => {
+    const sock = createSocket();
+    sock.fetchMessageHistory = async () => {
+        setImmediate(() => {
+            sock.ev.emit('messaging-history.set', { messages: [{ key: { id: 'initial-sync' } }] });
+            sock.ev.emit('messaging-history.set', {
+                messages: [{ key: { id: 'on-demand' } }],
+                peerDataRequestSessionId: 'request-id'
+            });
+        });
+        return 'request-id';
+    };
+
+    const messages = await fetchHistoryBatch(
+        sock,
+        50,
+        { remoteJid: 'chat-id', fromMe: false, id: 'anchor-id' },
+        123,
+        1000
+    );
+
+    assert.equal(messages[0].key.id, 'on-demand');
+    assert.equal(sock.ev.listenerCount('messaging-history.set'), 0);
+    assert.equal(sock.ev.listenerCount('connection.update'), 0);
 });

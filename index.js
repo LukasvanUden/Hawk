@@ -14,7 +14,7 @@ const pino = require('pino');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
 const path = require('path');
-const { registerMessageArchiveHandlers } = require('./message-events');
+const { fetchHistoryBatch, registerMessageArchiveHandlers } = require('./message-events');
 
 // --- CONFIGURATION ---
 const PORT = process.env.PORT || 3000;
@@ -181,6 +181,72 @@ let isConnected = false;
 let isConnecting = false;
 let reconnectTimer = null;
 let reconnectAttempt = 0;
+let backfillRunning = false;
+
+function messageTimestampSeconds(message) {
+    const timestamp = message?.messageTimestamp;
+    if (!timestamp) return 0;
+    if (typeof timestamp === 'number') return timestamp;
+    if (typeof timestamp.toNumber === 'function') return timestamp.toNumber();
+    return timestamp.low || 0;
+}
+
+async function backfillRecentMessages(currentSocket, days = 3) {
+    const cutoff = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
+    const chats = await db.collection(CHATS_COLLECTION).where('lastActive', '>=', cutoff).get();
+    const stats = { chats: chats.size, requested: 0, received: 0, skipped: 0, failed: 0 };
+
+    for (const chat of chats.docs) {
+        if (sock !== currentSocket || !isConnected) throw new Error('WhatsApp connection changed during backfill');
+
+        const latest = await chat.ref.collection('Messages').orderBy('timestamp', 'desc').limit(1).get();
+        if (latest.empty) {
+            stats.skipped++;
+            continue;
+        }
+
+        const latestMessage = latest.docs[0].data();
+        let oldestKey = {
+            remoteJid: chat.id,
+            fromMe: Boolean(latestMessage.fromMe),
+            id: latestMessage.id
+        };
+        let oldestTimestamp = Number(latestMessage.timestamp || 0);
+        if (!oldestKey.id || oldestTimestamp <= cutoff) {
+            stats.skipped++;
+            continue;
+        }
+
+        // ponytail: cap each chat at 500 messages; raise only if a busier chat needs more than three days.
+        for (let page = 0; page < 10 && oldestTimestamp > cutoff; page++) {
+            try {
+                const messages = await fetchHistoryBatch(currentSocket, 50, oldestKey, oldestTimestamp);
+                stats.requested++;
+                stats.received += messages.length;
+                if (!messages.length) break;
+
+                const datedMessages = messages
+                    .map(message => ({ message, timestamp: messageTimestampSeconds(message) }))
+                    .filter(item => item.message.key?.id && item.timestamp > 0)
+                    .sort((a, b) => a.timestamp - b.timestamp);
+                const oldest = datedMessages[0];
+                if (!oldest || oldest.timestamp >= oldestTimestamp) break;
+
+                oldestKey = oldest.message.key;
+                oldestTimestamp = oldest.timestamp;
+                if (messages.length < 50) break;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                stats.failed++;
+                console.log(`System: Backfill chat failed: ${error.message}`);
+                break;
+            }
+        }
+    }
+
+    console.log(`System: Backfill complete days=${days} chats=${stats.chats} requests=${stats.requested} received=${stats.received} skipped=${stats.skipped} failed=${stats.failed}`);
+    return stats;
+}
 
 function describeDisconnect(error) {
     const statusCode = error?.output?.statusCode ?? error?.statusCode;
@@ -619,6 +685,22 @@ const checkAuth = (req, res, next) => {
 };
 
 app.use(checkAuth);
+
+app.post('/api/backfill', (req, res) => {
+    if (!sock || !isConnected) {
+        return res.status(409).json({ error: 'WhatsApp is not connected.' });
+    }
+    if (backfillRunning) {
+        return res.status(409).json({ error: 'A backfill is already running.' });
+    }
+
+    const currentSocket = sock;
+    backfillRunning = true;
+    res.status(202).json({ started: true, days: 3 });
+    backfillRecentMessages(currentSocket, 3)
+        .catch(error => console.log(`System: Backfill failed: ${error.message}`))
+        .finally(() => { backfillRunning = false; });
+});
 
 Object.entries(ASSET_PATHS).forEach(([route, filePath]) => {
     app.get(route, (req, res) => res.sendFile(filePath));
