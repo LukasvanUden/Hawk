@@ -20,8 +20,6 @@ const { fetchHistoryBatch, registerMessageArchiveHandlers } = require('./message
 const PORT = process.env.PORT || 3000;
 const AUTH_USER = process.env.AUTH_USER;
 const AUTH_PASS = process.env.AUTH_PASS;
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const APP_HTML_PATH = path.join(__dirname, 'index.html');
 const ASSET_PATHS = {
     '/assets/icon.svg': path.join(__dirname, 'icon.svg'),
@@ -183,7 +181,6 @@ let isConnected = false;
 let isConnecting = false;
 let reconnectTimer = null;
 let reconnectAttempt = 0;
-let disconnectAlertSent = false;
 let backfillRunning = false;
 let backfillPaused = false;
 const BACKFILL_CONTROL_ID = 'backfill-control';
@@ -343,25 +340,6 @@ function describeDisconnect(error) {
     };
 }
 
-async function sendTelegramAlert(text) {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return false;
-
-    try {
-        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
-            signal: AbortSignal.timeout(10000)
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        console.log('System: Telegram alert sent.');
-        return true;
-    } catch (error) {
-        console.log(`System: Telegram alert failed: ${error.message}`);
-        return false;
-    }
-}
-
 function scheduleReconnect(delayMs = Math.min(5000 * (2 ** reconnectAttempt), 60000)) {
     if (reconnectTimer) {
         console.log("System: Reconnect already scheduled; ignoring duplicate close event.");
@@ -411,11 +389,6 @@ async function startWhatsApp() {
         const details = describeDisconnect(err);
         console.error(`System: WhatsApp connection setup failed ${JSON.stringify(details)}`);
         scheduleReconnect();
-        if (!disconnectAlertSent) {
-            disconnectAlertSent = await sendTelegramAlert(
-                `🔴 Hawk konnte keine WhatsApp-Verbindung herstellen.\nGrund: ${details.reason} (${details.statusCode})`
-            );
-        }
         return;
     } finally {
         isConnecting = false;
@@ -445,9 +418,6 @@ async function startWhatsApp() {
                 console.log("System: A newer instance replaced this connection; reconnect disabled for this process.");
                 return;
             } else if (details.statusCode === DisconnectReason.loggedOut) {
-                disconnectAlertSent = await sendTelegramAlert(
-                    '🔴 Hawk wurde von WhatsApp abgemeldet (401). Eine neue Verknüpfung ist erforderlich.'
-                ) || disconnectAlertSent;
                 console.log("System: Device Logged Out. Wiping session from Firestore.");
                 await clearState();
                 qrCodeData = null;
@@ -455,11 +425,6 @@ async function startWhatsApp() {
                 scheduleReconnect(0); // Restart to grab a fresh QR code
             } else {
                 scheduleReconnect(details.statusCode === DisconnectReason.restartRequired ? 0 : undefined);
-                if (!disconnectAlertSent) {
-                    disconnectAlertSent = await sendTelegramAlert(
-                        `🔴 Hawk hat die WhatsApp-Verbindung verloren.\nGrund: ${details.reason} (${details.statusCode})`
-                    );
-                }
             }
         } else if (connection === 'open') {
             console.log("System: Connection Open and Authenticated. Firebase Auth Sync Active.");
@@ -470,12 +435,6 @@ async function startWhatsApp() {
                 clearTimeout(reconnectTimer);
                 reconnectTimer = null;
             }
-            const connectedMessage = disconnectAlertSent
-                ? '🟢 Hawk hat die WhatsApp-Verbindung wiederhergestellt.'
-                : '🟢 Hawk wurde erfolgreich mit WhatsApp verbunden.';
-            disconnectAlertSent = false;
-            await sendTelegramAlert(connectedMessage);
-
             // Backfill all group names (subjects) once we're connected
             try {
                 const groups = await sock.groupFetchAllParticipating();
