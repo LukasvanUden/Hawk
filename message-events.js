@@ -41,7 +41,7 @@ function fetchHistoryBatch(sock, count, oldestMsgKey, oldestMsgTimestamp, timeou
 
         sock.ev.on('messaging-history.set', onHistory);
         sock.ev.on('connection.update', onConnection);
-        sock.fetchMessageHistory(count, oldestMsgKey, oldestMsgTimestamp)
+        sock.fetchMessageHistory(count, oldestMsgKey, oldestMsgTimestamp * 1000)
             .then(id => { requestId = id; })
             .catch(error => {
                 cleanup();

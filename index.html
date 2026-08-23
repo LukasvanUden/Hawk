@@ -1768,22 +1768,14 @@ function renderChatList(chats) {
                 container.innerHTML = `<div class="skel-msg-group"><div class="skeleton skel-bubble skel-left"></div><div class="skeleton skel-bubble skel-right" style="width:60%"></div><div class="skeleton skel-bubble skel-left" style="width:30%"></div></div>`;
             }
 
-            // 2. Delta Sync with Firebase
-            let lastTs = 0;
-            if (cachedMsgs.length > 0) {
-                lastTs = Math.max(...cachedMsgs.map(m => m.timestamp));
-            }
-            
+            // 2. Sync with Firebase
             // Artificial delay to let spinner animation glide smoothly if cache was instant
             await new Promise(r => setTimeout(r, 400));
             
             let pendingSyncs = ids.length;
 
             ids.forEach(id => {
-                let query = db.collection(DATA_COLLECTION).doc(id).collection('Messages').orderBy('timestamp');
-                if (lastTs > 0) {
-                    query = query.where('timestamp', '>', lastTs);
-                }
+                const query = db.collection(DATA_COLLECTION).doc(id).collection('Messages').orderBy('timestamp');
 
                 let isFirstSync = true;
                 window.unsub.push(query.onSnapshot(async snap => {

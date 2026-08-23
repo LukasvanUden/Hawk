@@ -2,7 +2,7 @@ const {
     default: makeWASocket,
     Browsers,
     DisconnectReason,
-    fetchLatestBaileysVersion,
+    fetchLatestWaWebVersion,
     BufferJSON,
     initAuthCreds,
     downloadMediaMessage,
@@ -186,7 +186,6 @@ let reconnectAttempt = 0;
 let disconnectAlertSent = false;
 let backfillRunning = false;
 let backfillPaused = false;
-const BACKFILL_JOB_ID = 'backfill-2026-08-20-3-days';
 const BACKFILL_CONTROL_ID = 'backfill-control';
 let backfillState = {
     status: 'idle',
@@ -334,21 +333,6 @@ async function launchBackfill(currentSocket, days) {
     }
 }
 
-async function runPendingBackfill(currentSocket) {
-    const job = db.collection('Hawk_Jobs').doc(BACKFILL_JOB_ID);
-    const snapshot = await job.get();
-    if (snapshot.data()?.status === 'complete' || backfillRunning) return;
-
-    await job.set({ status: 'running', startedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-    try {
-        const stats = await launchBackfill(currentSocket, 3);
-        await job.set({ status: 'complete', completedAt: admin.firestore.FieldValue.serverTimestamp(), stats }, { merge: true });
-    } catch (error) {
-        await job.set({ status: 'failed', error: error.message }, { merge: true });
-        console.log(`System: Backfill failed: ${error.message}`);
-    }
-}
-
 function describeDisconnect(error) {
     const statusCode = error?.output?.statusCode ?? error?.statusCode;
     return {
@@ -409,7 +393,7 @@ async function startWhatsApp() {
         const authState = await useFirestoreAuthState(db, AUTH_COLLECTION);
         const { state } = authState;
         ({ saveCreds, clearState } = authState);
-        const { version } = await fetchLatestBaileysVersion();
+        const { version } = await fetchLatestWaWebVersion();
 
         console.log(`System: Connecting to WhatsApp servers (Baileys ${version.join('.')})...`);
 
@@ -507,8 +491,6 @@ async function startWhatsApp() {
                 console.log("System: Could not fetch group names:", err.message);
             }
 
-            runPendingBackfill(currentSocket)
-                .catch(error => console.log(`System: Could not start pending backfill: ${error.message}`));
         }
     });
 
