@@ -721,7 +721,7 @@ async function startWhatsApp() {
         return stats;
     }
 
-    registerMessageArchiveHandlers(currentSocket, archiveMessages);
+    registerMessageArchiveHandlers(currentSocket, archiveMessages, () => backfillRunning);
 }
 
 // --- AUTH UTILS ---

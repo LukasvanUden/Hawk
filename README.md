@@ -111,7 +111,7 @@ A privacy-focused, self-hosted WhatsApp archiving tool. It captures messages (in
 5.  Tap **Link a Device** and scan the QR code. Alternatively, enter your phone number on the Render page and use the displayed code under **Link with phone number**.
 6.  The page should refresh and say **"System Operational"**. Your backend is now listening!
 
-Automatic history sync is disabled: connecting or restarting Hawk only logs new live messages and does not request older history from the primary phone. To explicitly request one to seven days of older messages, open the authenticated `/backfill` page or use **Settings → History Backfill**. Hawk selects chats from their stored message timestamps, continues backwards from the oldest stored message inside that window, and shows live progress plus pause/resume controls between WhatsApp's 50-message batches. Availability still depends on what the primary phone provides; an empty result is reported separately from a successful import.
+Automatic history sync is disabled: connecting or restarting Hawk only logs new live messages, never requests older history from the primary phone, and ignores unsolicited history batches outside a manually started backfill. To explicitly request one to seven days of older messages, open the authenticated `/backfill` page or use **Settings → History Backfill**. Hawk selects chats from their stored message timestamps, continues backwards from the oldest stored message inside that window, and shows live progress plus pause/resume controls between WhatsApp's 50-message batches. Availability still depends on what the primary phone provides; an empty result is reported separately from a successful import.
 
 ---
 

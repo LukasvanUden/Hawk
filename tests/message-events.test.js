@@ -18,7 +18,7 @@ test('archives messages emitted by history sync', async () => {
 
     registerMessageArchiveHandlers(sock, async (messages, context) => {
         archived.push({ messages, context });
-    });
+    }, () => true);
 
     sock.ev.emit('messaging-history.set', {
         messages: [{ key: { id: 'history-message' } }],
@@ -34,13 +34,31 @@ test('archives messages emitted by history sync', async () => {
     assert.equal(archived[0].context.progress, 100);
 });
 
+test('ignores unsolicited history sync while normal live logging stays active', async () => {
+    const sock = { ev: new EventEmitter() };
+    const archived = [];
+
+    registerMessageArchiveHandlers(sock, async (messages, context) => {
+        archived.push({ messages, context });
+    }, () => false);
+
+    sock.ev.emit('messaging-history.set', { messages: [{ key: { id: 'history-message' } }] });
+    sock.ev.emit('messages.upsert', {
+        messages: [{ key: { id: 'live-message' } }],
+        type: 'notify'
+    });
+    await nextTick();
+
+    assert.deepEqual(archived.map(batch => batch.messages[0].key.id), ['live-message']);
+});
+
 test('archives notify and append upserts only', async () => {
     const sock = createSocket();
     const archived = [];
 
     registerMessageArchiveHandlers(sock, async (messages, context) => {
         archived.push({ messages, context });
-    });
+    }, () => true);
 
     sock.ev.emit('messages.upsert', {
         messages: [{ key: { id: 'notify-message' } }],
