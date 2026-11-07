@@ -15,11 +15,15 @@ const admin = require('firebase-admin');
 const crypto = require('crypto');
 const path = require('path');
 const { fetchHistoryBatch, registerMessageArchiveHandlers } = require('./message-events');
+const { buildLogoutAlert } = require('./connection-alerts');
 
 // --- CONFIGURATION ---
 const PORT = process.env.PORT || 3000;
 const AUTH_USER = process.env.AUTH_USER;
 const AUTH_PASS = process.env.AUTH_PASS;
+// Optional: set both in Render to get a Telegram ping the moment WhatsApp logs Hawk out.
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const APP_HTML_PATH = path.join(__dirname, 'index.html');
 const ASSET_PATHS = {
     '/assets/icon.svg': path.join(__dirname, 'icon.svg'),
@@ -340,6 +344,27 @@ function describeDisconnect(error) {
     };
 }
 
+// Fire-and-forget Telegram ping. No-op (returns false) unless both env vars are set,
+// so this stays silent locally and only alerts from the live Render instance.
+async function sendTelegramAlert(text) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return false;
+
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+            signal: AbortSignal.timeout(10000)
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        console.log('System: Telegram alert sent.');
+        return true;
+    } catch (error) {
+        console.log(`System: Telegram alert failed: ${error.message}`);
+        return false;
+    }
+}
+
 function scheduleReconnect(delayMs = Math.min(5000 * (2 ** reconnectAttempt), 60000)) {
     if (reconnectTimer) {
         console.log("System: Reconnect already scheduled; ignoring duplicate close event.");
@@ -382,7 +407,13 @@ async function startWhatsApp() {
             browser: Browsers.ubuntu('Chrome'),
             connectTimeoutMs: 60000,
             keepAliveIntervalMs: 30000,
-            syncFullHistory: false
+            syncFullHistory: false,
+            // Belt-and-suspenders: never pull history on (re)link, so the phone never
+            // shows the "Synchronisation läuft" spam. Backfill stays a separate manual action.
+            shouldSyncHistoryMessage: () => false,
+            // Stay passive: don't mark the account "online", so normal phone notifications
+            // keep working and the linked device is less intrusive.
+            markOnlineOnConnect: false
         });
         sock = currentSocket;
     } catch (err) {
@@ -419,12 +450,14 @@ async function startWhatsApp() {
                 return;
             } else if (details.statusCode === DisconnectReason.loggedOut) {
                 console.log("System: Device Logged Out. Wiping session from Firestore.");
+                await sendTelegramAlert(buildLogoutAlert(process.env.RENDER_EXTERNAL_URL));
                 await clearState();
                 qrCodeData = null;
                 reconnectAttempt = 0;
                 scheduleReconnect(0); // Restart to grab a fresh QR code
             } else {
-                scheduleReconnect(details.statusCode === DisconnectReason.restartRequired ? 0 : undefined);
+                // Reconnect instantly on a QR timeout so a fresh QR is shown with no "Initializing" gap.
+                scheduleReconnect([DisconnectReason.restartRequired, DisconnectReason.timedOut].includes(details.statusCode) ? 0 : undefined);
             }
         } else if (connection === 'open') {
             console.log("System: Connection Open and Authenticated. Firebase Auth Sync Active.");
@@ -736,7 +769,7 @@ app.get('/login', (req, res) => {
         <html>
             <body style="font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5;">
                 <form action="/login" method="POST" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 300px;">
-                    <h2 style="margin-top: 0; text-align: center;">WhatsApp Logger</h2>
+                    <h2 style="margin-top: 0; text-align: center;">Backup System</h2>
                     <div style="margin-bottom: 1rem;">
                         <label style="display: block; margin-bottom: 0.5rem;">Username</label>
                         <input type="text" name="username" required style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
@@ -751,7 +784,7 @@ app.get('/login', (req, res) => {
                             Keep me logged in for 5 mins
                         </label>
                     </div>
-                    <button type="submit" style="width: 100%; padding: 0.75rem; background: #25D366; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Login</button>
+                    <button type="submit" style="width: 100%; padding: 0.75rem; background: #2F6FED; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Login</button>
                 </form>
             </body>
         </html>
@@ -792,7 +825,7 @@ app.use(checkAuth);
 
 function startBackfill(req, res) {
     if (!sock || !isConnected) {
-        return res.status(409).json({ error: 'WhatsApp is not connected.' });
+        return res.status(409).json({ error: 'Not connected.' });
     }
     if (backfillRunning) {
         return res.status(409).json({ error: 'A backfill is already running.' });
@@ -847,7 +880,7 @@ app.post('/api/backfill/resume', async (req, res) => {
         return res.json({ resumed: true });
     }
     if (!sock || !isConnected) {
-        return res.status(409).json({ error: 'WhatsApp is not connected.' });
+        return res.status(409).json({ error: 'Not connected.' });
     }
 
     const snapshot = await db.collection('Hawk_Jobs').doc(BACKFILL_CONTROL_ID).get();
@@ -879,8 +912,8 @@ app.get('/backfill', (req, res) => {
                     label { font-weight: 650; }
                     select, button { min-height: 44px; border: 1px solid #aeb8b3; border-radius: 10px; padding: 0 14px; font: inherit; }
                     select { margin-left: auto; background: white; color: inherit; }
-                    button { cursor: pointer; background: #182b24; color: white; border-color: #182b24; }
-                    button.secondary { background: white; color: #182b24; }
+                    button { cursor: pointer; background: #223049; color: white; border-color: #223049; }
+                    button.secondary { background: white; color: #223049; }
                     button:disabled { cursor: default; opacity: .45; }
                     progress { width: 100%; height: 12px; }
                     .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 18px; }
@@ -899,7 +932,7 @@ app.get('/backfill', (req, res) => {
                     <a href="/">← Zurück zu Hawk</a>
                     <div class="card">
                         <h1>History Backfill</h1>
-                        <p>Ältere WhatsApp-Nachrichten in Blöcken von maximal 50 abrufen.</p>
+                        <p>Ältere Nachrichten in Blöcken von maximal 50 abrufen.</p>
                         <div class="row">
                             <label for="days">Zeitraum</label>
                             <select id="days">
@@ -942,7 +975,7 @@ app.get('/backfill', (req, res) => {
                         const active = state.status === 'running' || state.status === 'paused';
                         const resumable = state.status === 'interrupted';
                         elements.status.textContent = labels[state.status] || state.status;
-                        if (!state.connected) elements.status.textContent += ' · WhatsApp getrennt';
+                        if (!state.connected) elements.status.textContent += ' · getrennt';
                         elements.days.value = String(state.days || 3);
                         elements.days.disabled = active;
                         elements.start.disabled = active || resumable || !state.connected;
@@ -997,22 +1030,22 @@ app.post('/pairing-code', async (req, res) => {
         return res.status(400).send('Enter the phone number with country code, using 8 to 15 digits. <a href="/">Back</a>');
     }
     if (!sock || isConnected) {
-        return res.status(409).send('WhatsApp is not ready for pairing. <a href="/">Try again</a>');
+        return res.status(409).send('Not ready for pairing. <a href="/">Try again</a>');
     }
 
     try {
         const code = await sock.requestPairingCode(phoneNumber);
         const cleanCode = String(code).replace(/[^a-z0-9]/gi, '');
-        if (!cleanCode) throw new Error('WhatsApp returned an empty pairing code');
+        if (!cleanCode) throw new Error('The service returned an empty pairing code');
         const displayCode = cleanCode.match(/.{1,4}/g).join('-');
         res.set('Cache-Control', 'no-store');
         return res.send(`
             <html>
                 <body style="font-family: sans-serif; text-align: center; padding-top: 50px; background-color: #f0f2f5;">
                     <div style="background: white; padding: 40px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                        <h2>WhatsApp pairing code</h2>
+                        <h2>Pairing-Code</h2>
                         <p style="font-size: 32px; font-weight: bold; letter-spacing: 4px;">${displayCode}</p>
-                        <p>Enter this code in WhatsApp under Linked devices → Link a device → Link with phone number.</p>
+                        <p>Gib diesen Code in der App unter Verknüpfte Geräte → Gerät verknüpfen → Mit Telefonnummer ein.</p>
                     </div>
                 </body>
             </html>

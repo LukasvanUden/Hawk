@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WhatsApp Logger</title>
+    <title>Backup System</title>
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/assets/manifest-wpChat.json">
-    <meta name="theme-color" content="#006C4C">
+    <meta name="theme-color" content="#1F5FAE">
     
     <!-- SVG Favicon -->
     <link rel="icon" href="/assets/icon.svg">
@@ -25,14 +25,14 @@
     <style>
         :root {
             /* Light Theme Tokens */
-            --md-sys-color-primary: #006C4C;
+            --md-sys-color-primary: #1F5FAE;
             --md-sys-color-on-primary: #FFFFFF;
-            --md-sys-color-primary-container: #89F8C7;
-            --md-sys-color-on-primary-container: #002114;
+            --md-sys-color-primary-container: #A8C8FF;
+            --md-sys-color-on-primary-container: #001A33;
             
             --md-sys-color-secondary: #4D6357;
             --md-sys-color-on-secondary: #FFFFFF;
-            --md-sys-color-secondary-container: #CFE9D9;
+            --md-sys-color-secondary-container: #DCEAFC;
             --md-sys-color-on-secondary-container: #092016;
             
             --md-sys-color-surface: #FBFDF9;
@@ -51,7 +51,7 @@
             --md-sys-color-on-error-container: #410002;
             
             /* WhatsApp Authentic Colors */
-            --chat-bubble-me: #DCF8C6;
+            --chat-bubble-me: #D8E8FF;
             --chat-bubble-them: #FFFFFF;
             --chat-bg-color: #ECE5DD;
             --chat-bg-image-opacity: 0.08;
@@ -67,15 +67,15 @@
 
         /* Dark Theme Tokens */
         [data-theme="dark"] {
-            --md-sys-color-primary: #89F8C7;
-            --md-sys-color-on-primary: #003828;
-            --md-sys-color-primary-container: #005138;
-            --md-sys-color-on-primary-container: #89F8C7;
+            --md-sys-color-primary: #A8C8FF;
+            --md-sys-color-on-primary: #00254A;
+            --md-sys-color-primary-container: #0B3D6E;
+            --md-sys-color-on-primary-container: #A8C8FF;
             
             --md-sys-color-secondary: #BACCB3;
             --md-sys-color-on-secondary: #25342D;
             --md-sys-color-secondary-container: #3B4B43;
-            --md-sys-color-on-secondary-container: #D6E8D8;
+            --md-sys-color-on-secondary-container: #DDEBFB;
             
             --md-sys-color-surface: #111412;
             --md-sys-color-surface-dim: #111412;
@@ -92,7 +92,7 @@
             --md-sys-color-error-container: #93000A;
             --md-sys-color-on-error-container: #FFDAD6;
             
-            --chat-bubble-me: #005C4B;
+            --chat-bubble-me: #143E66;
             --chat-bubble-them: #202C33;
             --chat-bg-color: #0B141A;
             --chat-bg-image-opacity: 0.05;
@@ -143,7 +143,7 @@
         #auth-screen {
             position: fixed; inset: 0; z-index: 999;
             background: radial-gradient(circle at 0% 0%, #C1E8FB 0%, transparent 50%), 
-                        radial-gradient(circle at 100% 100%, #89F8C7 0%, transparent 50%), 
+                        radial-gradient(circle at 100% 100%, #A8C8FF 0%, transparent 50%), 
                         #FBFDF9;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             padding: 24px; height: 100dvh;
@@ -152,7 +152,7 @@
         
         [data-theme="dark"] #auth-screen {
              background: radial-gradient(circle at 0% 0%, #001F29 0%, transparent 50%), 
-                        radial-gradient(circle at 100% 100%, #002114 0%, transparent 50%), 
+                        radial-gradient(circle at 100% 100%, #001A33 0%, transparent 50%), 
                         #111412;
         }
         
@@ -433,7 +433,7 @@
 
         @media (max-width: 768px) {
             .sidebar { width: 100%; flex: 1; border-right: none; background: radial-gradient(circle at 0% 0%, #c1e8fb49 0%, transparent 50%), radial-gradient(circle at 100% 100%, #89f8c86b 0%, transparent 50%), #fbfdf96c; }
-            [data-theme="dark"] .sidebar { background: radial-gradient(circle at 0% 0%, #001F29 0%, transparent 50%), radial-gradient(circle at 100% 100%, #002114 0%, transparent 50%), #111412; }
+            [data-theme="dark"] .sidebar { background: radial-gradient(circle at 0% 0%, #001F29 0%, transparent 50%), radial-gradient(circle at 100% 100%, #001A33 0%, transparent 50%), #111412; }
             .chat-area { position: fixed; inset: 0; z-index: 20; transform: translateX(100%); transition: transform 0.3s; background-color: var(--chat-bg-color); }
             .chat-area.active { transform: translateX(0); }
             .back-btn { display: flex !important; margin-right: 8px; }
@@ -763,7 +763,7 @@
                 <div class="setting-row">
                     <div class="setting-label">
                         <h4>History Backfill</h4>
-                        <p>Fetch and control older WhatsApp messages.</p>
+                        <p>Fetch and control older messages.</p>
                     </div>
                     <button class="m3-btn filled" style="width: auto; padding: 0 16px; height: 36px; font-size: 13px;" onclick="window.location.href='/backfill'">Open</button>
                 </div>
@@ -908,7 +908,7 @@
         <div class="sheet-header"><h3 style="font-family:'Lexend', sans-serif; margin: 0;">Install App</h3><button class="icon-btn" onclick="closeInstallSheet()"><span class="material-symbols-rounded">close</span></button></div>
         <div class="sheet-content">
             <div style="width:64px; height:64px; margin:0 auto 16px; display:flex; align-items:center; justify-content:center;"><img src="/assets/icon.svg" alt="App Logo" style="width:100%; height:100%; object-fit: contain;"></div>
-            <p style="color:var(--md-sys-color-on-surface-variant); margin-bottom:24px;">Install WhatsApp Logger App for a better experience, full screen view, and enhanced security.</p>
+            <p style="color:var(--md-sys-color-on-surface-variant); margin-bottom:24px;">Install Backup System App for a better experience, full screen view, and enhanced security.</p>
             <div class="sheet-actions"><button class="m3-btn filled" onclick="installPWA()">Install App</button><button class="m3-btn text" onclick="closeInstallSheet()">Continue in Browser</button></div>
         </div>
     </div>
@@ -1402,7 +1402,7 @@
             try {
                 const iconPath = new URL('/assets/icon.svg', window.location.href).toString();
                 const credential = await navigator.credentials.create({
-                    publicKey: { challenge: new Uint8Array([1, 2, 3, 4]), rp: { name: "WhatsApp Logger", icon: iconPath }, user: { id: new Uint8Array([1]), name: "User", displayName: "App User" }, pubKeyCredParams: [{type: "public-key", alg: -7}], authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" }, timeout: 60000 }
+                    publicKey: { challenge: new Uint8Array([1, 2, 3, 4]), rp: { name: "Backup System", icon: iconPath }, user: { id: new Uint8Array([1]), name: "User", displayName: "App User" }, pubKeyCredParams: [{type: "public-key", alg: -7}], authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" }, timeout: 60000 }
                 });
                 
                 if(credential) {
@@ -1508,9 +1508,9 @@
                 {q: "Is this secure?", a: "Yes, data lives in your private Firebase. No one else can access it."},
                 {q: "Does it track deleted messages?", a: "Yes, once a message is received by the server, it is logged forever, even if the sender deletes it."},
                 {q: "Does my phone need to be online?", a: "No. Once linked, your Render server handles logging even if your phone is powered off."},
-                {q: "Is this legal?", a: "The tool uses standard WhatsApp Web protocols to function as a linked device. It is intended for personal archiving of your own conversations."},
-                {q: "Does it save photos/videos?", a: "No. To keep the project free (Firebase offers limited storage), the logger only saves text content. Media files would fill up your free tier storage very quickly."},
-                {q: "Does it save View Once messages?", a: "No. WhatsApp does not send the content of `View Once` media to linked devices/web clients, so the logger cannot see them."}
+                {q: "Is this legal?", a: "The tool works as a standard linked companion device. It is intended for personal archiving of your own conversations."},
+                {q: "Does it save photos/videos?", a: "No. To keep the project free (Firebase offers limited storage), the system only saves text content. Media files would fill up your free tier storage very quickly."},
+                {q: "Does it save View Once messages?", a: "No. The content of `View Once` media is not sent to linked devices, so it cannot be archived."}
             ];
             const container = document.getElementById('faqContainer');
             faqs.forEach(item => {
