@@ -8,9 +8,8 @@ const LOGGED_OUT = 401; // DisconnectReason.loggedOut
 // recover on their own and must stay silent — that constant noise is exactly what
 // was deliberately disabled before (commit ef420fa).
 function buildLogoutAlert(renderUrl) {
-    const link = renderUrl ? `\n\nJetzt neu verknüpfen: ${renderUrl}` : '';
-    return `🔴 Hawk wurde von WhatsApp abgemeldet – es archiviert gerade NICHTS mehr.\n`
-        + `Bitte den QR neu scannen, damit es weiterläuft.${link}`;
+    const link = renderUrl ? `\n\nNeu verknüpfen: ${renderUrl}` : '';
+    return `🔴 Hawk wurde abgemeldet${link}`;
 }
 
 module.exports = { buildLogoutAlert, LOGGED_OUT };

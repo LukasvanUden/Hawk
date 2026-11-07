@@ -3,10 +3,10 @@ const test = require('node:test');
 
 const { buildLogoutAlert, LOGGED_OUT } = require('../connection-alerts');
 
-test('logout alert names the problem and tells the user to re-scan', () => {
+test('logout alert names the app and the problem', () => {
     const msg = buildLogoutAlert();
+    assert.match(msg, /hawk/i);
     assert.match(msg, /abgemeldet/i);
-    assert.match(msg, /scannen/i);
 });
 
 test('logout alert includes the re-link URL when one is known', () => {
