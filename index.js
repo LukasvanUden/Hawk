@@ -16,6 +16,7 @@ const crypto = require('crypto');
 const path = require('path');
 const { fetchHistoryBatch, registerMessageArchiveHandlers } = require('./message-events');
 const { buildLogoutAlert } = require('./connection-alerts');
+const { createViewerToken } = require('./viewer-token');
 
 // --- CONFIGURATION ---
 const PORT = process.env.PORT || 3000;
@@ -739,20 +740,25 @@ app.get('/ping', (req, res) => {
 });
 
 // 2. API: Verify Credentials
-app.post('/api/verify', (req, res) => {
+// On success it also returns `firebaseToken`: the viewer signs in to Firebase with it,
+// and only then do the Firestore rules (firestore.rules) let it read this account's chats.
+app.post('/api/verify', async (req, res) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 
-    if (!AUTH_USER || !AUTH_PASS) {
-        return res.json({ success: true, authDisabled: true });
+    const authDisabled = !AUTH_USER || !AUTH_PASS;
+    const { username, password } = req.body || {};
+
+    if (!authDisabled && !(username === AUTH_USER && password === AUTH_PASS)) {
+        return res.status(401).json({ success: false });
     }
 
-    const { username, password } = req.body;
-
-    if (username === AUTH_USER && password === AUTH_PASS) {
-        return res.json({ success: true });
-    } else {
-        return res.status(401).json({ success: false });
+    try {
+        const firebaseToken = await createViewerToken(admin.auth(), CHATS_COLLECTION);
+        return res.json(authDisabled ? { success: true, authDisabled: true, firebaseToken } : { success: true, firebaseToken });
+    } catch (err) {
+        console.log(`System: Could not create viewer token: ${err.message}`);
+        return res.status(500).json({ success: false, error: 'token' });
     }
 });
 

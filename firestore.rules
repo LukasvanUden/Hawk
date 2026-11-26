@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// Hawk Firestore rules.
+//
+// The backend uses the Admin SDK and is not affected by these rules: it can always
+// read and write the chats, the WhatsApp session (*_auth) and Hawk_Jobs.
+//
+// The viewer (index.html) reads Firestore directly from the browser. It may only do so
+// after signing in with a custom token that the backend hands out from /api/verify
+// once the AUTH_USER/AUTH_PASS check succeeded. That token carries the claim
+// `hawkChats` = the one chats collection this viewer belongs to ("Chats" for the
+// default account, "<ACCOUNT_ID>_Chats" for any other). Everything else stays closed,
+// including the WhatsApp session collections.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isViewerOf(coll) {
+      return request.auth != null && request.auth.token.hawkChats == coll;
+    }
+
+    // A chat document: readable, and only its custom display name may be changed.
+    match /{coll}/{chatId} {
+      allow read: if isViewerOf(coll);
+      allow update: if isViewerOf(coll)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customName']);
+    }
+
+    // The archived messages of a chat: read-only for the viewer.
+    match /{coll}/{chatId}/Messages/{messageId} {
+      allow read: if isViewerOf(coll);
+    }
+  }
+}

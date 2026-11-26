@@ -21,6 +21,7 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <style>
         :root {
@@ -915,7 +916,11 @@
 
     <!-- MAIN APP SCRIPT -->
     <script>
-        const RENDER_BACKEND_URL = window.location.origin;
+        // The backend checks the password and hands out the Firestore token. When it serves
+        // this page itself, that is just this origin. The local viewer from start-viewer.command
+        // (port 8088, a plain file server without /api) has to ask the Render backend instead.
+        const STATIC_VIEWER_BACKEND_URL = "https://hawk-5f9m.onrender.com";
+        const RENDER_BACKEND_URL = window.location.port === '8088' ? STATIC_VIEWER_BACKEND_URL : window.location.origin;
         // Which Firestore collection this viewer reads. Default "Chats" = the first phone.
         // For an additional phone's viewer, set this to its namespace, e.g. "phone2_Chats".
         const DATA_COLLECTION = "Chats";
@@ -930,6 +935,20 @@
         
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const fbAuth = firebase.auth();
+
+        // Firestore only answers once we are signed in with the token from /api/verify
+        // (see firestore.rules). Firebase keeps that sign-in across reloads on its own.
+        async function signInToFirestore(firebaseToken) {
+            if (!firebaseToken) throw new Error('No Firestore token from the backend');
+            await fbAuth.signInWithCustomToken(firebaseToken);
+        }
+
+        function hasFirestoreSession() {
+            return new Promise(resolve => {
+                const stop = fbAuth.onAuthStateChanged(user => { stop(); resolve(!!user); });
+            });
+        }
         let activeChatId = null;
         let isCurrentChatGroup = false;
         let deferredPrompt;
@@ -1163,7 +1182,7 @@
             populateFAQ();
 
             // Setup Auth & App Routing with smooth transitions
-            const authValid = localStorage.getItem('wp_auth_expiry') > Date.now();
+            const authValid = localStorage.getItem('wp_auth_expiry') > Date.now() && await hasFirestoreSession();
             
             if (authValid) {
                 // If auth is valid, fade out the auth screen completely and show the app
@@ -1198,6 +1217,7 @@
                     });
                     const data = await response.json();
                     if (data.authDisabled) {
+                        await signInToFirestore(data.firebaseToken);
                         revealApp();
                         return;
                     }
@@ -1452,6 +1472,7 @@
                 });
                 const data = await response.json();
                 if(data.success) {
+                    await signInToFirestore(data.firebaseToken);
                     if(document.getElementById('rememberMe').checked) localStorage.setItem('wp_auth_expiry', Date.now() + (3 * 24 * 60 * 60 * 1000));
                     else localStorage.setItem('wp_auth_expiry', Date.now() + (1 * 60 * 60 * 1000)); // default 1 hr fallback
                     revealApp();
@@ -1913,7 +1934,7 @@ function renderChatList(chats) {
             } else document.getElementById('notFoundModal').classList.add('active');
         }
 
-        function handleLogout() { localStorage.removeItem('wp_auth_expiry'); localStorage.removeItem('wp_app_pin'); localStorage.removeItem('wp_app_bio'); location.reload(); }
+        async function handleLogout() { localStorage.removeItem('wp_auth_expiry'); localStorage.removeItem('wp_app_pin'); localStorage.removeItem('wp_app_bio'); try { await fbAuth.signOut(); } catch (e) {} location.reload(); }
         function closeChatMobile() { window.history.back(); }
         window.addEventListener('popstate', () => { document.getElementById('chatArea').classList.remove('remove'); document.getElementById('chatArea').classList.remove('active'); });
         
